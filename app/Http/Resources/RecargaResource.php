@@ -31,11 +31,14 @@ class RecargaResource extends JsonResource
             'n_funcionarios_vigentes'       => 0,
             'n_funcionarios_no_vigentes'    => 0,
             'total_pagado'                  => 0,
+            'last_estado'                   => $this->seguimiento()->latest()->with('estado')->first(),
             'date_created_user'             => $this->date_created_user,
             'date_updated_user'             => $this->date_updated_user,
+            'disabled_reglas'               => $this->reglas()->count() > 0 ? true : false,
 
             'establecimiento'               => $this->establecimiento,
-            'seguimiento'                   => $this->seguimiento,
+            'seguimiento'                   => $this->seguimiento()->with('estado', 'userBy')->orderBy('created_at', 'DESC')->get(),
+            'reglas'                        => $this->reglas,
             'user_created_by'               => $this->userCreatedBy,
             'user_update_by'                => $this->userUpdateBy
 

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 
 class SeguimientoRecarga extends Model
 {
@@ -28,6 +29,13 @@ class SeguimientoRecarga extends Model
 
     public function userBy()
     {
-        return $this->belongsTo(EstadoRecarga::class, 'user_id');
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    protected static function booted()
+    {
+        static::creating(function ($seguimiento) {
+            $seguimiento->user_id   = Auth::user()->id;
+        });
     }
 }

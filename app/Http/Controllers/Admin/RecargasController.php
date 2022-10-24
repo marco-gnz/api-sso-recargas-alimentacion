@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\Recargas\StoreRecargaRequest;
 use App\Http\Requests\Admin\Recargas\UpdateDatosPrincipalesRecargaRequest;
 use App\Http\Resources\RecargaResource;
 use App\Models\Recarga;
+use App\Models\SeguimientoRecarga;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -61,6 +62,9 @@ class RecargasController extends Controller
     {
         $with = [
             'seguimiento',
+            'reglas.grupoAusentismo',
+            'reglas.tipoAusentismo',
+            'reglas.meridianos',
             'establecimiento',
             'userCreatedBy',
             'userUpdateBy'
@@ -120,6 +124,10 @@ class RecargasController extends Controller
                 $recarga = Recarga::create($request->only($form));
 
                 if ($recarga) {
+                    $estado = SeguimientoRecarga::create([
+                        'recarga_id'    => $recarga->id,
+                        'estado_id'     => 1
+                    ]);
                     $recarga    = $recarga->fresh($with);
                     return $this->successResponse(RecargaResource::make($recarga), 'Recarga con código ' . $recarga->codigo . ' ingresada con éxito', null, 200);
                 } else {
@@ -149,6 +157,10 @@ class RecargasController extends Controller
                     $update = $recarga->update($request->only($form));
 
                     if ($update) {
+                        $estado = SeguimientoRecarga::create([
+                            'recarga_id'    => $recarga->id,
+                            'estado_id'     => 7
+                        ]);
                         $with       = $this->withRecarga();
                         $recarga    = $recarga->fresh($with);
                         return $this->successResponse(RecargaResource::make($recarga), 'Recarga con código #' . $recarga->codigo . ' editada con éxito.', null, 200);

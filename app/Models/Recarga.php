@@ -32,6 +32,11 @@ class Recarga extends Model
         return $this->hasMany(SeguimientoRecarga::class);
     }
 
+    public function reglas()
+    {
+        return $this->hasMany(Regla::class);
+    }
+
     public function establecimiento()
     {
         return $this->belongsTo(Establecimiento::class, 'establecimiento_id');
