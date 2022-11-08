@@ -32,6 +32,11 @@ class Recarga extends Model
         return $this->hasMany(SeguimientoRecarga::class);
     }
 
+    public function ausentismos()
+    {
+        return $this->hasMany(Ausentismo::class);
+    }
+
     public function reglas()
     {
         return $this->hasMany(Regla::class);
@@ -40,6 +45,11 @@ class Recarga extends Model
     public function establecimiento()
     {
         return $this->belongsTo(Establecimiento::class, 'establecimiento_id');
+    }
+
+    public function users()
+    {
+        return $this->belongsToMany(User::class);
     }
 
     public function userCreatedBy()

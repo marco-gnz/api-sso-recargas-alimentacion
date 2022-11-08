@@ -15,6 +15,9 @@ class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;
 
+    protected $table = "users";
+    protected $primaryKey = 'id';
+
     /**
      * The attributes that are mass assignable.
      *
@@ -31,6 +34,11 @@ class User extends Authenticatable
         'estado',
         'email',
         'password',
+        'turno',
+        'establecimiento_id',
+        'unidad_id',
+        'planta_id',
+        'cargo_id',
         'usuario_add_id',
         'fecha_add'
     ];
@@ -54,6 +62,39 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
     ];
 
+    /* protected $guarded = ['id']; */
+
+    public function ausentismos()
+    {
+        return $this->hasMany(Ausentismo::class);
+    }
+
+
+    public function establecimiento()
+    {
+        return $this->belongsTo(Establecimiento::class, 'establecimiento_id');
+    }
+
+    public function unidad()
+    {
+        return $this->belongsTo(Unidad::class, 'unidad_id');
+    }
+
+    public function planta()
+    {
+        return $this->belongsTo(Planta::class, 'planta_id');
+    }
+
+    public function cargo()
+    {
+        return $this->belongsTo(Cargo::class, 'cargo_id');
+    }
+
+    public function recargas()
+    {
+        return $this->belongsToMany(Recarga::class);
+    }
+
     protected static function booted()
     {
         static::creating(function ($usuario) {
@@ -61,7 +102,7 @@ class User extends Authenticatable
             $usuario->rut_completo          = $usuario->rut.'-'.$usuario->dv;
             $usuario->nombre_completo       = $usuario->nombres.' '.$usuario->apellidos;
             $usuario->password              = bcrypt($usuario->rut);
-            $usuario->usuario_add_id        = Auth::user()->id;
+            /* $usuario->usuario_add_id        = Auth::user()->id; */
             $usuario->fecha_add             = Carbon::now()->toDateTimeString();
         });
 
