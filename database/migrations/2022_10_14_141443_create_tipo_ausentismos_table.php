@@ -15,6 +15,7 @@ class CreateTipoAusentismosTable extends Migration
     {
         Schema::create('tipo_ausentismos', function (Blueprint $table) {
             $table->bigIncrements('id');
+            $table->integer('codigo_sirh')->nullable();
             $table->string('nombre');
             $table->boolean('estado')->default(1);
         });
