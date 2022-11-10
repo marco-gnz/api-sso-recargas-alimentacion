@@ -20,55 +20,55 @@ class ColumnasImportController extends Controller
     {
         $columnas   = [
             [
-                'nombre_columna'        => 'RUT',
+                'nombre_columna'        => 'rut',
                 'formato'               => $this->numerico,
                 'required'              => true,
                 'descripcion'           => 'Rut de funcionario'
             ],
             [
-                'nombre_columna'        => 'DV',
+                'nombre_columna'        => 'dv',
                 'formato'               => $this->texto,
                 'required'              => true,
                 'descripcion'           => 'Dígito verificador'
             ],
             [
-                'nombre_columna'        => 'NOMBRES',
+                'nombre_columna'        => 'nombres',
                 'formato'               => $this->texto,
                 'required'              => true,
                 'descripcion'           => 'Nombre de funcionario'
             ],
             [
-                'nombre_columna'        => 'APELLIDOS',
+                'nombre_columna'        => 'apellidos',
                 'formato'               => $this->texto,
                 'required'              => true,
                 'descripcion'           => 'Apellidos de funcionario'
             ],
             [
-                'nombre_columna'        => 'EMAIL',
+                'nombre_columna'        => 'email',
                 'formato'               => $this->texto,
                 'required'              => false,
                 'descripcion'           => 'Dirección de correo electrónico'
             ],
             [
-                'nombre_columna'        => 'CODESTABLECIMIENTO',
+                'nombre_columna'        => 'codestablecimiento',
                 'formato'               => $this->numerico,
                 'required'              => true,
                 'descripcion'           => 'Código en SIRH'
             ],
             [
-                'nombre_columna'        => 'CODUNIDAD',
+                'nombre_columna'        => 'codunidad',
                 'formato'               => $this->numerico,
                 'required'              => true,
                 'descripcion'           => 'Código en SIRH'
             ],
             [
-                'nombre_columna'        => 'PLANTA',
+                'nombre_columna'        => 'planta',
                 'formato'               => $this->texto,
                 'required'              => true,
                 'descripcion'           => 'Nombre en SIRH'
             ],
             [
-                'nombre_columna'        => 'CODCARGO',
+                'nombre_columna'        => 'codcargo',
                 'formato'               => $this->numerico,
                 'required'              => true,
                 'descripcion'           => 'Código en SIRH'
@@ -81,31 +81,31 @@ class ColumnasImportController extends Controller
     {
         $columnas   = [
             [
-                'nombre_columna'        => 'RUT',
+                'nombre_columna'        => 'rut',
                 'formato'               => $this->numerico,
                 'required'              => true,
                 'descripcion'           => 'Rut de funcionario'
             ],
             [
-                'nombre_columna'        => 'DV',
+                'nombre_columna'        => 'dv',
                 'formato'               => $this->texto,
                 'required'              => true,
                 'descripcion'           => 'Dígito verificador'
             ],
             [
-                'nombre_columna'        => 'NOMBRETIPOAUSENTISMO',
+                'nombre_columna'        => 'nombretipoausentismo',
                 'formato'               => $this->texto,
                 'required'              => true,
                 'descripcion'           => 'Nombre de tipo de ausentismo'
             ],
             [
-                'nombre_columna'        => 'FECHAINICIO',
+                'nombre_columna'        => 'fechainicio',
                 'formato'               => $this->fecha,
                 'required'              => true,
                 'descripcion'           => 'Fecha de inicio ausentimo'
             ],
             [
-                'nombre_columna'        => 'FECHATERMINO',
+                'nombre_columna'        => 'fechatermino',
                 'formato'               => $this->fecha,
                 'required'              => true,
                 'descripcion'           => 'Fecha de término ausentimo'
