@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreateEstablecimientosTable extends Migration
+class CreatePlantasTable extends Migration
 {
     /**
      * Run the migrations.
@@ -13,10 +13,9 @@ class CreateEstablecimientosTable extends Migration
      */
     public function up()
     {
-        Schema::create('establecimientos', function (Blueprint $table) {
+        Schema::create('plantas', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->integer('cod_sirh')->nullable();
-            $table->string('sigla');
             $table->string('nombre');
             $table->timestamps();
         });
@@ -29,6 +28,6 @@ class CreateEstablecimientosTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('establecimientos');
+        Schema::dropIfExists('plantas');
     }
 }

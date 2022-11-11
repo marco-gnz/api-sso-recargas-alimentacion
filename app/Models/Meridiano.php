@@ -9,6 +9,8 @@ class Meridiano extends Model
 {
     use HasFactory;
 
+    public $timestamps = false;
+
     public function reglas()
     {
         return $this->belongsToMany(Regla::class);

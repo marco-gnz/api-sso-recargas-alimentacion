@@ -11,6 +11,8 @@ class TipoAusentismo extends Model
     protected $primaryKey = 'id';
 
     protected $fillable = [
-        'nombre'
+        'codigo_sirh',
+        'nombre',
+        'estado'
     ];
 }
