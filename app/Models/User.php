@@ -69,6 +69,10 @@ class User extends Authenticatable
         return $this->hasMany(Ausentismo::class);
     }
 
+    public function turnos()
+    {
+        return $this->hasMany(UserTurno::class);
+    }
 
     public function establecimiento()
     {
@@ -92,7 +96,7 @@ class User extends Authenticatable
 
     public function recargas()
     {
-        return $this->belongsToMany(Recarga::class);
+        return $this->belongsToMany(Recarga::class)->withPivot('beneficio');
     }
 
     protected static function booted()

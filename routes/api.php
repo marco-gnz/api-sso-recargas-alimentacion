@@ -35,6 +35,7 @@ Route::group(
         Route::get('/admin/modulos/meridianos/response', [App\Http\Controllers\Admin\Modulos\ModulosResponseController::class, 'returnMeridianos']);
         Route::get('/admin/modulos/columnas/funcionarios', [App\Http\Controllers\Admin\Modulos\ColumnasImportController::class, 'columasImportarFuncionarios']);
         Route::get('/admin/modulos/columnas/grupo-uno', [App\Http\Controllers\Admin\Modulos\ColumnasImportController::class, 'columnasImportGrupoUno']);
+        Route::get('/admin/modulos/columnas/turnantes', [App\Http\Controllers\Admin\Modulos\ColumnasImportController::class, 'columnasImportTurnos']);
 
         Route::get('/admin/recargas/response', [App\Http\Controllers\Admin\RecargasController::class, 'returnRecargas']);
         Route::post('/admin/recargas/add', [App\Http\Controllers\Admin\RecargasController::class, 'storeRecarga']);
@@ -45,6 +46,8 @@ Route::group(
         //files
         Route::post('/admin/recargas/recarga/masivo/funcionarios', [App\Http\Controllers\Admin\RecargasFilesController::class, 'loadFileFuncionarios']);
         Route::post('/admin/recargas/recarga/masivo/funcionarios/import', [App\Http\Controllers\Admin\RecargasFilesController::class, 'storeAllFuncionarios']);
+        Route::post('/admin/recargas/recarga/masivo/turnos', [App\Http\Controllers\Admin\RecargasFilesController::class, 'loadFileTurnos']);
+        Route::post('/admin/recargas/recarga/masivo/turnos/import', [App\Http\Controllers\Admin\RecargasFilesController::class, 'storeFileTurnos']);
         //files-grupos
         Route::post('/admin/recargas/recarga/masivo/grupo/uno', [App\Http\Controllers\Admin\RecargasFilesController::class, 'loadFileGrupoUno']);
         Route::post('/admin/recargas/recarga/masivo/grupo/uno/import', [App\Http\Controllers\Admin\RecargasFilesController::class, 'storeFileGrupoUno']);
@@ -57,6 +60,7 @@ Route::group(
         //regla-resumen
         Route::get('/admin/recargas/recarga/{codigo}/resumen', [App\Http\Controllers\Admin\RecargaResumenController::class, 'returnFindRecarga']);
         Route::get('/admin/recargas/recarga/{codigo}/funcionarios', [App\Http\Controllers\Admin\RecargaResumenController::class, 'returnFuncionariosToRecarga']);
+        Route::post('/admin/recargas/recarga/funcionario/beneficio', [App\Http\Controllers\Admin\RecargaResumenController::class, 'changeBeneficioToUser']);
     }
 );
 
