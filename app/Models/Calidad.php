@@ -5,15 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class TipoAusentismo extends Model
+class Calidad extends Model
 {
-    protected $table = "tipo_ausentismos";
+    protected $table = "calidads";
     protected $primaryKey = 'id';
 
     protected $fillable = [
-        'codigo_sirh',
-        'nombre',
-        'sigla',
-        'estado'
+        'cod_sirh',
+        'nombre'
     ];
 }

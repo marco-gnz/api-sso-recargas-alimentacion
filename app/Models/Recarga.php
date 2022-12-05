@@ -49,7 +49,7 @@ class Recarga extends Model
 
     public function users()
     {
-        return $this->belongsToMany(User::class);
+        return $this->belongsToMany(User::class)->withPivot('beneficio');
     }
 
     public function userCreatedBy()

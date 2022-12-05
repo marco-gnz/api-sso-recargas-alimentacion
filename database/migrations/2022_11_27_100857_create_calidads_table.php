@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreateRecargaUserTable extends Migration
+class CreateCalidadsTable extends Migration
 {
     /**
      * Run the migrations.
@@ -13,11 +13,10 @@ class CreateRecargaUserTable extends Migration
      */
     public function up()
     {
-        Schema::create('recarga_user', function (Blueprint $table) {
+        Schema::create('calidads', function (Blueprint $table) {
             $table->bigIncrements('id');
-            $table->unsignedInteger('recarga_id');
-            $table->unsignedInteger('user_id');
-            $table->boolean('beneficio')->default(1);
+            $table->string('cod_sirh')->nullable();
+            $table->string('nombre');
             $table->timestamps();
         });
     }
@@ -29,6 +28,6 @@ class CreateRecargaUserTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('recarga_user');
+        Schema::dropIfExists('calidads');
     }
 }

@@ -17,6 +17,7 @@ class CreateTipoAusentismosTable extends Migration
             $table->bigIncrements('id');
             $table->integer('codigo_sirh')->nullable();
             $table->string('nombre');
+            $table->string('sigla')->nullable();
             $table->boolean('estado')->default(1);
         });
     }
