@@ -34,9 +34,49 @@ class UserTurno extends Model
         'date_updated_user'
     ];
 
+    public function funcionario()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function recarga()
+    {
+        return $this->belongsTo(Recarga::class, 'recarga_id');
+    }
+
     public function proceso()
     {
         return $this->belongsTo(ProcesoTurno::class, 'proceso_id');
+    }
+
+    public function calidad()
+    {
+        return $this->belongsTo(Calidad::class, 'calidad_id');
+    }
+
+    public function establecimiento()
+    {
+        return $this->belongsTo(Establecimiento::class, 'establecimiento_id');
+    }
+
+    public function unidad()
+    {
+        return $this->belongsTo(Unidad::class, 'unidad_id');
+    }
+
+    public function planta()
+    {
+        return $this->belongsTo(Planta::class, 'planta_id');
+    }
+
+    public function userBy()
+    {
+        return $this->belongsTo(User::class, 'user_created_by');
+    }
+
+    public function userByUpdate()
+    {
+        return $this->belongsTo(User::class, 'user_update_by');
     }
 
     protected static function booted()

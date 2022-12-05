@@ -61,6 +61,10 @@ Route::group(
         Route::get('/admin/recargas/recarga/{codigo}/resumen', [App\Http\Controllers\Admin\RecargaResumenController::class, 'returnFindRecarga']);
         Route::get('/admin/recargas/recarga/{codigo}/funcionarios', [App\Http\Controllers\Admin\RecargaResumenController::class, 'returnFuncionariosToRecarga']);
         Route::post('/admin/recargas/recarga/funcionario/beneficio', [App\Http\Controllers\Admin\RecargaResumenController::class, 'changeBeneficioToUser']);
+
+        //recarga-funcionario
+        Route::get('/admin/recargas/recarga/{codigo}/funcionario/{uuid}', [App\Http\Controllers\Admin\RecargaFuncionarioController::class, 'returnFuncionario']);
+        Route::get('/admin/recargas/recarga/{codigo}/funcionario/{uuid}/turnos', [App\Http\Controllers\Admin\RecargaFuncionarioController::class, 'returnTurnosFuncionario']);
     }
 );
 
