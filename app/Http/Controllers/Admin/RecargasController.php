@@ -67,7 +67,8 @@ class RecargasController extends Controller
             'reglas.meridianos',
             'establecimiento',
             'userCreatedBy',
-            'userUpdateBy'
+            'userUpdateBy',
+            'users'
         ];
 
         return $with;
@@ -89,7 +90,7 @@ class RecargasController extends Controller
     {
         try {
             $with = $this->withRecarga();
-            $recarga = Recarga::where('codigo', $codigo)->with($with)->first();
+            $recarga = Recarga::where('codigo', $codigo)->with($with)->withCount('users')->first();
 
             if ($recarga) {
                 return $this->successResponse(RecargaResource::make($recarga), null, null, 200);
@@ -227,7 +228,7 @@ class RecargasController extends Controller
         try {
             $max            = false;
             $tz             = 'America/Santiago';
-            $days_in_month  = Carbon::createFromDate($request->anio, $request->mes, '01', $tz)->daysInMonth;
+            $days_in_month  = Carbon::createFromDate($request->anio, $request->mes, '01', $tz)->daysInMonth + 1;
 
             if ((int)$request->total_dias_habiles > $days_in_month) {
                 $max = true;

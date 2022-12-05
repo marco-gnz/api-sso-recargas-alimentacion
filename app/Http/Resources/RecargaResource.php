@@ -35,6 +35,7 @@ class RecargaResource extends JsonResource
             'date_created_user'             => $this->date_created_user,
             'date_updated_user'             => $this->date_updated_user,
             'disabled_reglas'               => $this->reglas()->count() > 0 ? true : false,
+            'users_count'                   => $this->users_count,
 
             'establecimiento'               => $this->establecimiento,
             'seguimiento'                   => $this->seguimiento()->with('estado', 'userBy')->orderBy('created_at', 'DESC')->get(),
