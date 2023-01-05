@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Imports\AsistenciaImport;
+use App\Imports\AsistenciaImportStore;
 use App\Imports\Grupos\GrupoUnoImport;
 use App\Imports\Grupos\GrupoUnoImportStore;
 use App\Imports\UsersImport;
@@ -11,6 +13,7 @@ use App\Imports\UserTurnoImport;
 use App\Imports\UserTurnoImportStore;
 use App\Models\Recarga;
 use App\Models\SeguimientoRecarga;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 use Maatwebsite\Excel\HeadingRowImport;
@@ -275,9 +278,9 @@ class RecargasFilesController extends Controller
             $validate_columns   = $this->validateColumns($new_columnas, $headings_file[0][0]);
 
             if (!$validate_columns[0]) {
-                $message = "No se localizó el nombre de columna '{$validate_columns[1]}' en la posición {$row_columnas} para el archivo {$file->getClientOriginalName()}.";
+                $message    = "No se localizó el nombre de columna '{$validate_columns[1]}' en la posición {$row_columnas} para el archivo {$file->getClientOriginalName()}.";
                 return $this->errorResponse($message, 404);
-            }else{
+            } else {
                 $import     = new UserTurnoImportStore($recarga, $new_columnas, $row_columnas);
                 $save       = Excel::import($import, $file);
                 if ($recarga) {
@@ -287,6 +290,117 @@ class RecargasFilesController extends Controller
                     ]);
                 }
                 $message = $import->importados . ' turnos importados';
+                return $this->successResponse($save, 'Operación realizada con éxito', $message, 200);
+            }
+        } catch (\Exception $error) {
+            return response()->json(array($error->getMessage(), $error->failures()));
+        }
+    }
+
+    public function transformDate($value, $format = 'Y-m-d')
+    {
+        try {
+            return Carbon::instance(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($value));
+        } catch (\ErrorException $e) {
+            return Carbon::createFromFormat($format, $value);
+        }
+    }
+
+    public function transformDateExcel($number)
+    {
+        $format = Carbon::parse($number)->format('Y-m-d');
+        $str_date = strtotime($format);
+        $excel_date = floatval(25569 + $str_date / 86400);
+
+        return $excel_date;
+    }
+
+    public function loadFileAsistencia(Request $request)
+    {
+        try {
+            $new_columnas   = [];
+            $file           = request()->file('file');
+            $recarga        = Recarga::where('codigo', $request->codigo)->with('establecimiento')->first();
+
+            $row_columnas   = $request->row_columnas != null ? $request->row_columnas : 0;
+            $columnas       = $request->columnas;
+            $columnas       = json_decode($columnas, true);
+
+            foreach ($columnas as $columna) {
+                if (!$columna['formato_excel']) {
+                    array_push($new_columnas, str_replace(' ', '_', strtolower($columna['nombre_columna'])));
+                } else {
+                    array_push($new_columnas, $columna['formato_excel']);
+                }
+            }
+
+            $headings_file      = (new HeadingRowImport($row_columnas))->toArray($file);
+            $validate_columns   = $this->validateColumns($new_columnas, $headings_file[0][0]);
+
+            if (!$validate_columns[0]) {
+                $name_column_error = null;
+
+                if (is_numeric($validate_columns[1])) {
+                    $name_column_error = $this->transformDate($validate_columns[1]);
+                    $name_column_error = Carbon::parse($name_column_error)->format('d-m-Y');
+                } else {
+                    $name_column_error = $validate_columns[1];
+                }
+                $message = "No se localizó el nombre de columna '{$name_column_error}' en la posición {$row_columnas} para el archivo {$file->getClientOriginalName()}.";
+                return $this->errorResponse($message, 404);
+            } else {
+                $import = new AsistenciaImport($recarga, $new_columnas, $row_columnas);
+                Excel::import($import, $file);
+
+                if (count($import->data)) {
+                    return $this->successResponse($import->data, null, null, 200);
+                } else {
+                    return $this->errorResponse('No existen registros.', 404);
+                }
+            }
+        } catch (\Exception $error) {
+            return response()->json(array($error->getMessage(), $error->failures()));
+        }
+    }
+
+    public function storeFileAsistencia(Request $request)
+    {
+        try {
+            $new_columnas   = [];
+            $file           = request()->file('file');
+            $recarga        = Recarga::where('codigo', $request->codigo)->with('establecimiento')->first();
+
+            $row_columnas   = $request->row_columnas != null ? $request->row_columnas : 0;
+            $columnas       = $request->columnas;
+            $columnas       = json_decode($columnas, true);
+
+            foreach ($columnas as $columna) {
+                if (!$columna['formato_excel']) {
+                    array_push($new_columnas, str_replace(' ', '_', strtolower($columna['nombre_columna'])));
+                } else {
+                    array_push($new_columnas, $columna['formato_excel']);
+                }
+            }
+
+            $headings_file      = (new HeadingRowImport($row_columnas))->toArray($file);
+            $validate_columns   = $this->validateColumns($new_columnas, $headings_file[0][0]);
+
+            if (!$validate_columns[0]) {
+                $name_column_error = null;
+
+                if (is_numeric($validate_columns[1])) {
+                    $name_column_error = $this->transformDate($validate_columns[1]);
+                    $name_column_error = Carbon::parse($name_column_error)->format('d-m-Y');
+                } else {
+                    $name_column_error = $validate_columns[1];
+                }
+                $message = "No se localizó el nombre de columna '{$name_column_error}' en la posición {$row_columnas} para el archivo {$file->getClientOriginalName()}.";
+                return $this->errorResponse($message, 404);
+            }else{
+                $import     = new AsistenciaImportStore($recarga, $new_columnas, $row_columnas);
+                $save       = Excel::import($import, $file);
+
+                $message = $import->importados . ' registros importados';
                 return $this->successResponse($save, 'Operación realizada con éxito', $message, 200);
             }
         } catch (\Exception $error) {

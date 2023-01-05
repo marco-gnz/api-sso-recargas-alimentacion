@@ -90,6 +90,24 @@ class FuncionariosResumenResource extends JsonResource
         return $data;
     }
 
+    public function esTurnante($funcionario, $recarga)
+    {
+        $turnante = false;
+
+        $turno      = $funcionario->turnos()->where('recarga_id', $recarga->id)->where('es_turnante', true)->first();
+        $asistencia = $funcionario->asistencias()->where('recarga_id', $recarga->id)->first();
+
+        if(($turno) && ($turno->es_turnante && $asistencia)){
+            $turnante = true;
+        }else if($asistencia && !$turno){
+            $turnante = true;
+        }else if($turno && !$asistencia){
+            $turnante = null;
+        }
+
+        return $turnante;
+    }
+
     public function toArray($request)
     {
         $turno                      = $this->turnos()->where('recarga_id', $this->recarga->id)->first();
@@ -98,17 +116,18 @@ class FuncionariosResumenResource extends JsonResource
 
         return [
             'id'                    => $this->id,
-            'uuid'                    => $this->uuid,
+            'uuid'                  => $this->uuid,
             'beneficio'             => $this->recargas()->first()->pivot->beneficio ? true : false,
             'rut_completo'          => $this->rut_completo,
             'apellidos'             => $this->apellidos,
             'nombre_completo'       => $this->nombre_completo,
-            'turno'                 => $turno != null ? ($turno->es_turnante ? true : false) : null,
+            'turno'                 => $this->esTurnante($this, $this->recarga),
             'tipo_pago'             => $turno != null ? ($turno->proceso ? $turno->proceso->nombre : null) : null,
             'grupo_uno'             => $this->ausentismos()->where('recarga_id', $this->recarga->id)->where('grupo_id', 1)->sum('total_dias_ausentismo_periodo'),
             'total_grupos'          => $this->totalGrupos($this),
             'dias_cancelar'         => $total_dias_cancelar,
-            'total_cancelar'        => $this->recarga->monto_dia * $total_dias_cancelar
+            'total_cancelar'        => $this->recarga->monto_dia * $total_dias_cancelar,
+            'dias_libres'           => $this->asistencias()->where('recarga_id', $this->recarga->id)->where('tipo_asistencia_turno_id', 3)->count()
         ];
     }
 }

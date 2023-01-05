@@ -19,6 +19,7 @@ class Recarga extends Model
         'total_dias_mes',
         'total_dias_habiles',
         'monto_dia',
+        'monto_estimado_mes',
         'active',
         'establecimiento_id',
         'user_created_by',
@@ -40,6 +41,11 @@ class Recarga extends Model
     public function reglas()
     {
         return $this->hasMany(Regla::class);
+    }
+
+    public function asistencias()
+    {
+        return $this->hasMany(Asistencia::class);
     }
 
     public function establecimiento()
