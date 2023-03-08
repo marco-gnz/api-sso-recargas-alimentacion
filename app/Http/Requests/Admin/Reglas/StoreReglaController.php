@@ -24,37 +24,50 @@ class StoreReglaController extends FormRequest
     public function rules()
     {
         return [
-            'reglas'                            => 'present|array',
+            'reglas'                                    => 'present|array',
 
-            'reglas.*.recarga_id'               => 'nullable | unique:reglas',
+            'reglas.*.recarga_id'                       => 'nullable',
 
-            'reglas.*.tipo_ausentismo_id'       => 'required',
+            'reglas.*.tipo_ausentismo_id'               => 'required',
 
-            'reglas.*.grupo_id'                 => 'required',
+            'reglas.*.grupo_id'                         => 'required',
 
-            'reglas.*.active'                   => 'required_if:reglas.*.grupo_id,2,3',
-            'reglas.*.meridiano'                => 'array|required_if:reglas.*.grupo_id,2',
-            'reglas.*.hora_inicio'              => 'required_if:reglas.*.grupo_id,3',
-            'reglas.*.hora_termino'             => 'required_if:reglas.*.grupo_id,3 '
+            'reglas.*.turno'                            => 'required',
+
+            'reglas.*.active'                           => 'required_if:reglas.*.grupo_id,2,3',
+
+            'reglas.*.meridiano_turnante'               => 'array|required_if:reglas.*.grupo_id,2',
+            'reglas.*.meridiano_no_turnante'            => 'array|required_if:reglas.*.grupo_id,2',
+
+            'reglas.*.hora_inicio_turnante'             => 'required_if:reglas.*.grupo_id,3',
+            'reglas.*.hora_termino_turnante'            => 'required_if:reglas.*.grupo_id,3 ',
+
+            'reglas.*.hora_inicio_no_turnante'          => 'required_if:reglas.*.grupo_id,3',
+            'reglas.*.hora_termino_no_turnante'         => 'required_if:reglas.*.grupo_id,3 '
         ];
     }
 
     public function messages()
     {
         return [
-            'reglas.*.recarga_id.required'              => 'La :attribute es obligatoria',
-            'reglas.*.recarga_id.unique'                => 'La :attribute ya existe en el sistema',
+            'reglas.*.recarga_id.required'                      => 'La :attribute es obligatoria',
 
-            'reglas.*.tipo_ausentismo_id.required'      => 'El :attribute es obligatorio',
+            'reglas.*.tipo_ausentismo_id.required'              => 'El :attribute es obligatorio',
 
-            'reglas.*.grupo_id.required'                  => 'El :attribute es obligatorio',
+            'reglas.*.grupo_id.required'                        => 'El :attribute es obligatorio',
 
-            'reglas.*.active.required_if'               => 'La :attribute es obligatoria',
+            'reglas.*.turno.required'                           => 'El :attribute es obligatorio',
 
-            'reglas.*.meridiano.required_if'            => 'El :attribute es obligatorio',
+            'reglas.*.active.required_if'                       => 'La :attribute es obligatoria',
 
-            'reglas.*.hora_inicio.required_if'          => 'La :attribute es obligatoria',
-            'reglas.*.hora_termino.required_if'         => 'La :attribute es obligatoria',
+            'reglas.*.meridiano_turnante.required_if'           => 'El :attribute es obligatorio',
+            'reglas.*.meridiano_no_turnante.required_if'        => 'El :attribute es obligatorio',
+
+            'reglas.*.hora_inicio_turnante.required_if'         => 'La :attribute es obligatoria',
+            'reglas.*.hora_termino_turnante.required_if'        => 'La :attribute es obligatoria',
+
+            'reglas.*.hora_inicio_no_turnante.required_if'      => 'La :attribute es obligatoria',
+            'reglas.*.hora_termino_no_turnante.required_if'     => 'La :attribute es obligatoria',
         ];
     }
 
@@ -64,10 +77,14 @@ class StoreReglaController extends FormRequest
             'reglas.*.recarga_id'               => 'recarga',
             'reglas.*.tipo_ausentismo_id'       => 'tipo de ausentismo',
             'reglas.*.grupo_id'                 => 'grupo',
+            'reglas.*.turno'                    => 'turno',
             'reglas.*.active'                   => 'regla',
-            'reglas.*.meridiano'                => 'meridiano',
-            'reglas.*.hora_inicio'              => 'hora',
-            'reglas.*.hora_termino'             => 'hora',
+            'reglas.*.meridiano_turnante'       => 'meridiano T',
+            'reglas.*.meridiano_no_turnante'    => 'meridiano NT',
+            'reglas.*.hora_inicio_turnante'     => 'hora inicio T',
+            'reglas.*.hora_termino_turnante'    => 'hora término T',
+            'reglas.*.hora_inicio_no_turnante'  => 'hora inicio NT',
+            'reglas.*.hora_termino_no_turnante' => 'hora término NT',
         ];
     }
 }

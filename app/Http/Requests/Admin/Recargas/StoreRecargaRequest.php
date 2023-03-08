@@ -25,10 +25,10 @@ class StoreRecargaRequest extends FormRequest
     {
         return [
             'establecimiento_id'    => ['required'],
-            'fecha'                 => ['required', 'date'],
-            'anio'                  => ['required'],
-            'mes'                   => ['required'],
-            'total_dias_habiles'    => ['required', 'numeric'],
+            'anio_beneficio'        => ['required'],
+            'mes_beneficio'         => ['required'],
+            'anio_calculo'          => ['required'],
+            'mes_calculo'           => ['required'],
             'monto_dia'             => ['required', 'numeric']
         ];
     }
@@ -38,11 +38,11 @@ class StoreRecargaRequest extends FormRequest
         return [
             'establecimiento_id.required'       => 'El :attribute es obligatorio',
 
-            'fecha.required'                    => 'La :attribute es obligatoria',
-            'fecha.date'                        => 'La :attribute debe ser una fecha válida',
+            'fecha_beneficio.required'          => 'La :attribute es obligatoria',
+            'fecha_beneficio.date'              => 'La :attribute debe ser una fecha válida',
 
-            'total_dias_habiles.required'       => 'El :attribute es obligatorio',
-            'total_dias_habiles.numeric'        => 'El :attribute debe ser un número válido',
+            'fecha_calculo.required'            => 'La :attribute es obligatoria',
+            'fecha_calculo.date'                => 'La :attribute debe ser una fecha válida',
 
             'monto_dia.required'                => 'El :attribute es obligatorio',
             'monto_dia.numeric'                 => 'El :attribute debe ser un número válido',
@@ -53,8 +53,8 @@ class StoreRecargaRequest extends FormRequest
     {
         return [
             'establecimiento_id'    => 'establecimiento',
-            'fecha'                 => 'fecha',
-            'total_dias_habiles'    => 'total de días habiles',
+            'fecha_beneficio'       => 'fecha de beneficio',
+            'fecha_calculo'         => 'fecha para el cálculo',
             'monto_dia'             => 'monto por día'
         ];
     }

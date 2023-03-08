@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Http\Requests\Admin\Recargas;
+namespace App\Http\Requests\Admin\Reajustes;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class UpdateDatosPrincipalesRecargaRequest extends FormRequest
+class ValidarReajusteRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -24,22 +24,22 @@ class UpdateDatosPrincipalesRecargaRequest extends FormRequest
     public function rules()
     {
         return [
-            'monto_dia'             => ['required', 'numeric']
+            'aprobar'       => ['required'],
+            'observacion'   => ['required_if:aprobar,false']
         ];
     }
 
     public function messages()
     {
         return [
-            'monto_dia.required'                => 'El :attribute es obligatorio',
-            'monto_dia.numeric'                 => 'El :attribute debe ser un número válido',
+            'observacion.required_if'   => 'La :attribute es obligatoria',
         ];
     }
 
     public function attributes()
     {
         return [
-            'monto_dia'             => 'monto por día'
+            'observacion'   => 'observación'
         ];
     }
 }

@@ -25,13 +25,17 @@ class UpdateAsistenciaResumenRequest extends FormRequest
     {
         return [
             'tipo_asistencia_turno_id'    => ['required'],
+            'observacion'                 => ['required', 'max:255']
         ];
     }
 
     public function messages()
     {
         return [
-            'tipo_asistencia_turno_id.required'       => 'El :attribute es obligatorio',
+            'tipo_asistencia_turno_id.required'     => 'El :attribute es obligatorio',
+
+            'observacion.required'                  => 'La :attribute es obligatoria',
+            'observacion.max'                       => 'La :attribute requiere :max caracteres máximo',
         ];
     }
 
@@ -39,6 +43,7 @@ class UpdateAsistenciaResumenRequest extends FormRequest
     {
         return [
             'tipo_asistencia_turno_id'    => 'tipo de turno',
+            'observacion'                 => 'observación'
         ];
     }
 }
