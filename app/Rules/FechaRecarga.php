@@ -25,8 +25,8 @@ class FechaRecarga implements Rule
         $new_fecha      = Carbon::parse($fecha_request)->format('Y-m-d');
 
         $tz                     = 'America/Santiago';
-        $fecha_recarga_inicio   = Carbon::createFromDate($this->recarga->anio, $this->recarga->mes, '01', $tz);
-        $fecha_recarga_termino  = Carbon::createFromDate($this->recarga->anio, $this->recarga->mes, '01', $tz);
+        $fecha_recarga_inicio   = Carbon::createFromDate($this->recarga->anio_beneficio, $this->recarga->mes_beneficio, '01', $tz);
+        $fecha_recarga_termino  = Carbon::createFromDate($this->recarga->anio_beneficio, $this->recarga->mes_beneficio, '01', $tz);
         $fecha_recarga_termino  = $fecha_recarga_termino->endOfMonth();
         $fecha_recarga_inicio->format('Y-m-d');
         $fecha_recarga_termino->format('Y-m-d');
