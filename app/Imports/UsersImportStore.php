@@ -4,14 +4,19 @@ namespace App\Imports;
 
 use App\Models\Cargo;
 use App\Models\Establecimiento;
+use App\Models\Hora;
+use App\Models\Ley;
 use App\Models\Planta;
 use App\Models\Recarga;
+use App\Models\RecargaContrato;
 use App\Models\Unidad;
 use App\Models\User;
 use App\Rules\EstablecimientoIsRecarga;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithValidation;
 use App\Rules\RutValidateRule;
+use App\Rules\TipeValueDateContrato;
+use Carbon\Carbon;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
 class UsersImportStore implements ToModel, WithValidation, WithHeadingRow
@@ -31,11 +36,18 @@ class UsersImportStore implements ToModel, WithValidation, WithHeadingRow
         $this->cod_unidad           = strtolower($this->columnas[6]);
         $this->nom_planta           = strtolower($this->columnas[7]);
         $this->cod_cargo            = strtolower($this->columnas[8]);
+        $this->ley                  = strtolower($this->columnas[9]);
+        $this->horas                = strtolower($this->columnas[10]);
+        $this->fecha_inicio         = strtolower($this->columnas[11]);
+        $this->fecha_termino        = strtolower($this->columnas[12]);
+        $this->fecha_alejamiento    = strtolower($this->columnas[13]);
     }
 
-    public $importados          = 0;
-    public $editados            = 0;
-    public $cargados_recarga    = 0;
+    public $importados              = 0;
+    public $editados                = 0;
+    public $cargados_recarga        = 0;
+    public $value_date_indefinido   = '00/00/0000';
+    public $respuesta = null;
 
     public function uniqueBy()
     {
@@ -47,58 +59,198 @@ class UsersImportStore implements ToModel, WithValidation, WithHeadingRow
         return $this->row_columnas;
     }
 
+    public function transformDate($value, $format = 'Y-m-d')
+    {
+        try {
+            return Carbon::instance(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($value));
+        } catch (\ErrorException $e) {
+            return Carbon::createFromFormat($format, $value);
+        }
+    }
+
     public function model(array $row)
     {
-        $rut                = "{$row[strtolower($this->rut)]}-{$row[strtolower($this->dv)]}";
-        $user               = User::where('rut', $rut)->first();
-        $establecimiento    = Establecimiento::where('cod_sirh', $row[strtolower($this->cod_establecimietno)])->first();
-        $unidad             = Unidad::where('cod_sirh', $row[strtolower($this->cod_unidad)])->first();
-        $planta             = Planta::where('nombre', $row[strtolower($this->nom_planta)])->first();
-        $cargo              = Cargo::where('cod_sirh', $row[strtolower($this->cod_cargo)])->first();
+        try {
+            $rut                = "{$row[strtolower($this->rut)]}-{$row[strtolower($this->dv)]}";
+            $user               = User::where('rut', $rut)->first();
+            $establecimiento    = Establecimiento::where('cod_sirh', $row[strtolower($this->cod_establecimietno)])->firstOrFail();
+            $unidad             = Unidad::where('cod_sirh', $row[strtolower($this->cod_unidad)])->firstOrFail();
+            $planta             = Planta::where('nombre', $row[strtolower($this->nom_planta)])->firstOrFail();
+            $cargo              = Cargo::where('cod_sirh', $row[strtolower($this->cod_cargo)])->firstOrFail();
+            $ley                = Ley::where('nombre', $row[strtolower($this->ley)])->firstOrFail();
+            $horas              = Hora::where('nombre', $row[strtolower($this->horas)])->firstOrFail();
 
-        if ($user) {
-            $data = [
-                'nombres'               => $row[strtolower($this->nombres)],
-                'apellidos'             => $row[strtolower($this->apellidos)],
-                'email'                 => $row[strtolower($this->email)] != null ? $row[strtolower($this->email)] : $user->email,
-                'establecimiento_id'    => $establecimiento->id,
-                'unidad_id'             => $unidad->id,
-                'planta_id'             => $planta->id,
-                'cargo_id'              => $cargo->id
-            ];
-            $update = $user->update($data);
-
-            if ($update) {
-                $this->editados++;
-            }
-        } else {
-            $data = [
-                'rut'                   => $row[strtolower($this->rut)],
-                'dv'                    => $row[strtolower($this->dv)],
-                'nombres'               => $row[strtolower($this->nombres)],
-                'apellidos'             => $row[strtolower($this->apellidos)],
-                'email'                 => $row[strtolower($this->email)],
-                'establecimiento_id'    => $establecimiento->id,
-                'unidad_id'             => $unidad->id,
-                'planta_id'             => $planta->id,
-                'cargo_id'              => $cargo->id
-            ];
-            $user = User::create($data);
+            $fecha_inicio       = Carbon::parse($this->transformDate($row[$this->fecha_inicio]));
+            $fecha_termino      = $this->returnFechaTerminoContrato($row[$this->fecha_termino], $row[$this->fecha_alejamiento]);
+            $calculo            = $this->totalDiasEnPeriodo($fecha_inicio, $fecha_termino);
 
             if ($user) {
+                $data_user = [
+                    'nombres'               => $row[strtolower($this->nombres)],
+                    'apellidos'             => $row[strtolower($this->apellidos)],
+                    'email'                 => $row[strtolower($this->email)] != null ? $row[strtolower($this->email)] : $user->email,
+                ];
+                $update = $user->update($data_user);
+
+                if ($update) {
+                    $this->editados++;
+                }
+
+                $data_contrato = [
+                    'fecha_inicio'                  => $calculo[1] != null ? Carbon::parse($calculo[1])->format('Y-m-d') : NULL,
+                    'fecha_termino'                 => $row[$this->fecha_termino] != $this->value_date_indefinido ? Carbon::parse($calculo[2])->format('Y-m-d') : NULL,
+                    'fecha_inicio_periodo'          => $calculo[4] != null ? Carbon::parse($calculo[4])->format('Y-m-d') : NULL,
+                    'fecha_termino_periodo'         => $calculo[5] != null ? Carbon::parse($calculo[5])->format('Y-m-d') : NULL,
+                    'total_dias_contrato'           => $row[$this->fecha_termino] != $this->value_date_indefinido ? $calculo[0] : NULL,
+                    'total_dias_contrato_periodo'   => $calculo[3],
+                    'alejamiento'                   => $row[$this->fecha_termino] === $this->value_date_indefinido && $row[$this->fecha_alejamiento] != $this->value_date_indefinido ? true : false,
+                    'user_id'                       => $user->id,
+                    'establecimiento_id'            => $establecimiento->id,
+                    'unidad_id'                     => $unidad->id,
+                    'planta_id'                     => $planta->id,
+                    'cargo_id'                      => $cargo->id,
+                    'ley_id'                        => $ley->id,
+                    'hora_id'                       => $horas->id,
+                    'recarga_id'                    => $this->recarga->id
+                ];
+
+                $new_contrato = RecargaContrato::create($data_contrato);
+
+                $recarga = $this->recarga;
+                $user_in_recarga = $recarga->whereHas('users', function ($query)  use ($user) {
+                    $query->where('recarga_user.user_id', $user->id);
+                })->first();
+
+                if (!$user_in_recarga) {
+                    $user->recargas()->attach($this->recarga->id);
+                    $this->cargados_recarga++;
+                }
                 $this->importados++;
+            } else {
+                $data_user = [
+                    'rut'                   => $row[strtolower($this->rut)],
+                    'dv'                    => $row[strtolower($this->dv)],
+                    'nombres'               => $row[strtolower($this->nombres)],
+                    'apellidos'             => $row[strtolower($this->apellidos)],
+                    'email'                 => $row[strtolower($this->email)],
+                ];
+                $user = User::create($data_user);
+
+                $user = $user->fresh();
+
+                $data_contrato = [
+                    'fecha_inicio'                  => $calculo[1] != null ? Carbon::parse($calculo[1])->format('Y-m-d') : NULL,
+                    'fecha_termino'                 => $row[$this->fecha_termino] != $this->value_date_indefinido ? Carbon::parse($calculo[2])->format('Y-m-d') : NULL,
+                    'fecha_inicio_periodo'          => $calculo[4] != null ? Carbon::parse($calculo[4])->format('Y-m-d') : NULL,
+                    'fecha_termino_periodo'         => $calculo[5] != null ? Carbon::parse($calculo[5])->format('Y-m-d') : NULL,
+                    'total_dias_contrato'           => $row[$this->fecha_termino] != $this->value_date_indefinido ? $calculo[0] : NULL,
+                    'total_dias_contrato_periodo'   => $calculo[3],
+                    'alejamiento'                   => $row[$this->fecha_termino] === $this->value_date_indefinido && $row[$this->fecha_alejamiento] != $this->value_date_indefinido ? true : false,
+                    'user_id'                       => $user->id,
+                    'establecimiento_id'            => $establecimiento->id,
+                    'unidad_id'                     => $unidad->id,
+                    'planta_id'                     => $planta->id,
+                    'cargo_id'                      => $cargo->id,
+                    'ley_id'                        => $ley->id,
+                    'hora_id'                       => $horas->id,
+                    'recarga_id'                    => $this->recarga->id
+                ];
+
+                $new_contrato = RecargaContrato::create($data_contrato);
+
+                if ($user) {
+                    $recarga = $this->recarga;
+                    $user_in_recarga = $recarga->whereHas('users', function ($query)  use ($user) {
+                        $query->where('recarga_user.user_id', $user->id);
+                    })->first();
+
+                    if (!$user_in_recarga) {
+                        $user->recargas()->attach($this->recarga->id);
+                        $this->cargados_recarga++;
+                    }
+                    $this->importados++;
+                }
             }
+            return $user;
+        } catch (\Exception $error) {
+            $this->respuesta = $error->getMessage();
+            return $this->respuesta;
         }
+    }
 
-        $user = $user->fresh();
+    public function totalDiasEnPeriodo($fecha_inicio, $fecha_termino, $dias = 0, $dias_periodo = 0)
+    {
+        try {
+            $new_fecha_inicio   = Carbon::parse($fecha_inicio);
+            $new_fecha_termino  = Carbon::parse($fecha_termino);
 
-        $user_in_recarga = $this->recarga->users->where('id', $user->id)->first();
-        if (!$user_in_recarga) {
-            $this->cargados_recarga++;
-            $user->recargas()->attach($this->recarga->id);
+            $new_fecha_inicio = $new_fecha_inicio->format('Y-m-d');
+            $new_fecha_termino = $new_fecha_termino->format('Y-m-d');
+
+            $tz                     = 'America/Santiago';
+            $fecha_recarga_inicio   = Carbon::createFromDate($this->recarga->anio_beneficio, $this->recarga->mes_beneficio, '01', $tz);
+            $fecha_recarga_termino  = Carbon::createFromDate($this->recarga->anio_beneficio, $this->recarga->mes_beneficio, '01', $tz);
+            $fecha_recarga_termino  = $fecha_recarga_termino->endOfMonth();
+            $fecha_recarga_inicio   = $fecha_recarga_inicio->format('Y-m-d');
+            $fecha_recarga_termino  = $fecha_recarga_termino->format('Y-m-d');
+
+            switch ($this->recarga) {
+                case (($new_fecha_inicio >= $fecha_recarga_inicio) && ($new_fecha_termino <= $fecha_recarga_termino)):
+                    $inicio             = Carbon::parse($new_fecha_inicio);
+                    $termino            = Carbon::parse($new_fecha_termino);
+                    $dias_periodo       = $inicio->diffInDays($termino) + 1;
+                    break;
+
+                case (($new_fecha_inicio >= $fecha_recarga_inicio) && ($new_fecha_termino > $fecha_recarga_termino)):
+                    $inicio             = Carbon::parse($new_fecha_inicio);
+                    $termino            = Carbon::parse($fecha_recarga_termino);
+                    $dias_periodo       = $inicio->diffInDays($termino) + 1;
+                    break;
+
+                case (($new_fecha_inicio < $fecha_recarga_inicio) && ($new_fecha_termino <= $fecha_recarga_termino)):
+                    $inicio             = Carbon::parse($fecha_recarga_inicio);
+                    $termino            = Carbon::parse($new_fecha_termino);
+                    $dias_periodo       = $inicio->diffInDays($termino) + 1;
+                    break;
+
+                case (($new_fecha_inicio < $fecha_recarga_inicio) && ($new_fecha_termino > $fecha_recarga_termino)):
+                    $inicio             = Carbon::parse($fecha_recarga_inicio);
+                    $termino            = Carbon::parse($fecha_recarga_termino);
+                    $dias_periodo       = $inicio->diffInDays($termino) + 1;
+                    break;
+
+                default:
+                    $dias_periodo = 'error';
+                    break;
+            }
+            $ini        = Carbon::parse($fecha_inicio);
+            $ter        = Carbon::parse($fecha_termino);
+            $dias       = $ini->diffInDays($ter) + 1;
+
+            return array($dias, $new_fecha_inicio, $new_fecha_termino, $dias_periodo, $inicio, $termino);
+        } catch (\Exception $error) {
+            return $error->getMessage();
         }
+    }
 
-        return $user;
+    public function returnFechaTerminoContrato($fecha_termino, $fecha_alejamiento)
+    {
+        $fecha = null;
+        switch ($fecha_termino) {
+            case ($fecha_termino != $this->value_date_indefinido && $fecha_alejamiento === $this->value_date_indefinido):
+                $fecha       = Carbon::parse($this->transformDate($fecha_termino));
+                break;
+
+            case ($fecha_termino === $this->value_date_indefinido && $fecha_alejamiento != $this->value_date_indefinido):
+                $fecha       = Carbon::parse($this->transformDate($fecha_alejamiento));
+                break;
+            default:
+                $tz                     = 'America/Santiago';
+                $fecha_recarga_termino  = Carbon::createFromDate($this->recarga->anio_beneficio, $this->recarga->mes_beneficio, '01', $tz);
+                $fecha                  = $fecha_recarga_termino->endOfMonth();
+                break;
+        }
+        return $fecha;
     }
 
     public function validateRut($value)
@@ -129,6 +281,85 @@ class UsersImportStore implements ToModel, WithValidation, WithHeadingRow
             return true;
         else
             return false;
+    }
+
+    public function periodoInRecarga($fecha_inicio, $fecha_termino)
+    {
+        $in_recarga = true;
+
+        $new_fecha_inicio       = Carbon::parse($fecha_inicio)->format('Y-m');
+        $new_fecha_termino      = Carbon::parse($fecha_termino)->format('Y-m');
+
+        $tz                     = 'America/Santiago';
+        $fecha_recarga_inicio   = Carbon::createFromDate($this->recarga->anio_beneficio, $this->recarga->mes_beneficio, '01', $tz)->format('Y-m');
+        $fecha_recarga_termino  = Carbon::createFromDate($this->recarga->anio_beneficio, $this->recarga->mes_beneficio, '01', $tz);
+        $fecha_recarga_termino  = $fecha_recarga_termino->endOfMonth()->format('Y-m');
+
+        if ($new_fecha_inicio != $fecha_recarga_inicio || $new_fecha_termino != $fecha_recarga_termino) {
+            $in_recarga = false;
+        }
+        return $in_recarga;
+    }
+
+    public function contratoDuplicado($rut, $fecha_inicio_real, $fecha_termino_real)
+    {
+        $existe         = false;
+        $funcionario    = User::where('rut_completo', $rut)->first();
+
+        if ($funcionario) {
+            $contratos = $funcionario->contratos()
+                ->where('recarga_id', $this->recarga->id)
+                ->where('fecha_inicio_periodo', $fecha_inicio_real)
+                ->where('fecha_termino_periodo', $fecha_termino_real)
+                ->where(function ($query) {
+                    $query->whereHas('recarga', function ($query) {
+                        $query->where('active', true);
+                    });
+                })->count();
+
+            if ($contratos > 0) {
+                $existe = true;
+            }
+        }
+        return $existe;
+    }
+
+    public function returnKeyFile($data)
+    {
+        $new_key = "{$data[$this->rut]}_{$data[$this->cod_establecimietno]}_{$data[$this->fecha_inicio]}_{$data[$this->fecha_termino]}_{$data[$this->fecha_alejamiento]}";
+        return $new_key;
+    }
+
+    public function withValidator($validator)
+    {
+        $assoc_array = array();
+        $validator->after(function ($validator) use ($assoc_array) {
+            foreach ($validator->getData() as $key => $data) {
+                $new_key             = $this->returnKeyFile($data);
+                $rut                 = "{$data[$this->rut]}-{$data[$this->dv]}";
+                $validate            = $this->validateRut($rut);
+
+                $fecha_inicio        = Carbon::parse($this->transformDate($data[$this->fecha_inicio]));
+                $fecha_termino       = $this->returnFechaTerminoContrato($data[$this->fecha_termino], $data[$this->fecha_alejamiento]);
+                $calculo             = $this->totalDiasEnPeriodo($fecha_inicio, $fecha_termino);
+
+                $fecha_inicio_real          = $calculo[4] ? Carbon::parse($calculo[4])->format('Y-m-d') : null;
+                $fecha_termino_real         = $calculo[5] ? Carbon::parse($calculo[5])->format('Y-m-d') : null;
+                $periodo_in_recarga         = $this->periodoInRecarga($fecha_inicio_real, $fecha_termino_real);
+                $contrato_duplicado         = $this->contratoDuplicado($rut, $fecha_inicio_real, $fecha_termino_real);
+
+                if (!$validate) {
+                    $validator->errors()->add($key, 'Rut incorrecto, por favor verificar. Verificado con Módulo 11.');
+                } else if (!$periodo_in_recarga) {
+                    $validator->errors()->add($key, "Fechas fuera de periodo de recarga.");
+                } else if ($contrato_duplicado) {
+                    $validator->errors()->add($key, "Contrato duplicado");
+                } else if (in_array($new_key, $assoc_array)) {
+                    $validator->errors()->add($key, 'Registro duplicado en archivo.');
+                }
+                array_push($assoc_array, $new_key);
+            }
+        });
     }
 
     public function rules(): array
@@ -171,22 +402,23 @@ class UsersImportStore implements ToModel, WithValidation, WithHeadingRow
             $this->cod_cargo => [
                 'required',
                 'exists:cargos,cod_sirh'
+            ],
+            $this->ley => [
+                'required',
+                'exists:leys,nombre'
+            ],
+            $this->horas => [
+                'required',
+                'exists:horas,nombre'
+            ],
+            $this->fecha_inicio => [
+                'required'
+            ],
+            $this->fecha_termino => [
+                'required',
+                new TipeValueDateContrato
             ]
         ];
-    }
-
-    public function withValidator($validator)
-    {
-        $validator->after(function ($validator) {
-            foreach ($validator->getData() as $key => $data) {
-                $rut        = "{$data[$this->rut]}-{$data[$this->dv]}";
-                $validate   = $this->validateRut($rut);
-
-                if (!$validate) {
-                    $validator->errors()->add($key, 'Rut incorrecto, por favor verificar. Verificado con Módulo 11.');
-                }
-            }
-        });
     }
 
     public function customValidationMessages()
@@ -219,6 +451,18 @@ class UsersImportStore implements ToModel, WithValidation, WithHeadingRow
 
             "{$this->cod_cargo}.required"                                   => 'El código es obligatorio',
             "{$this->cod_cargo}.exists"                                     => 'El código no existe en el sistema',
+
+            "{$this->ley}.required"                                         => 'La Ley es obligatoria',
+            "{$this->ley}.exists"                                           => 'La Ley no existe en el sistema',
+
+            "{$this->horas}.required"                                       => 'La hora es obligatoria',
+            "{$this->horas}.exists"                                         => 'La hora no existe en el sistema',
+
+            "{$this->fecha_inicio}.required"                                => 'La fecha de inicio es obligatoria.',
+            "{$this->fecha_inicio}.date"                                    => 'La fecha debe ser yyyy-mm-dd.',
+
+            "{$this->fecha_termino}.required"                               => 'La fecha de término es obligatoria.',
+            "{$this->fecha_termino}.date"                                   => 'La fecha debe ser yyyy-mm-dd.',
         ];
     }
 }

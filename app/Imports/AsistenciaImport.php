@@ -196,9 +196,9 @@ class AsistenciaImport implements ToCollection, WithHeadingRow, WithValidation
                     $validator->errors()->add($key, 'Rut incorrecto, por favor verificar. Verificado con Módulo 11.');
                 } else if (!$exist_value[0]) {
                     $validator->errors()->add($key, $exist_value[1]);
-                } else if ($duplicado[0]) {
+                } /* else if ($duplicado[0]) {
                     $validator->errors()->add($key, $duplicado[1]);
-                }
+                } */
             }
         });
     }

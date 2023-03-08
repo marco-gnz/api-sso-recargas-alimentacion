@@ -29,7 +29,8 @@ class AsistenciaImportStore implements ToModel, WithHeadingRow, WithValidation
         $this->turno_nocturno           = 'N';
         $this->dia_libre                = 'X';
     }
-    public $importados  = 0;
+    public $importados      = 0;
+    public $actualizados    = 0;
 
     public function headingRow(): int
     {
@@ -58,16 +59,31 @@ class AsistenciaImportStore implements ToModel, WithHeadingRow, WithValidation
                         $tipo_asistencia_turno  = TipoAsistenciaTurno::where('nombre', $row[$value])->first();
 
                         if ($tipo_asistencia_turno) {
+                            $existe_asistencia = $this->existAsistencia($date, $tipo_asistencia_turno->id, $funcionario->id, $establecimiento->id);
+
                             $data['fecha']                      = Carbon::parse($date->format('Y-m-d'))->format('Y-m-d');
                             $data['dia']                        = Carbon::parse($date->format('Y-m-d'))->format('d');
                             $data['mes']                        = Carbon::parse($date->format('Y-m-d'))->format('m');
                             $data['anio']                       = Carbon::parse($date->format('Y-m-d'))->format('Y');
                             $data['tipo_asistencia_turno_id']   = $tipo_asistencia_turno->id;
 
-                            $asistencia = Asistencia::create($data);
+                            if (!$existe_asistencia[0]) {
+                                $asistencia = Asistencia::create($data);
+                                if ($asistencia) {
+                                    $this->importados++;
+                                }
+                            } else {
+                                $asistencia_existente = $existe_asistencia[1];
 
-                            if ($asistencia) {
-                                $this->importados++;
+                                $update = false;
+                                if ($asistencia_existente->tipo_asistencia_turno_id != $tipo_asistencia_turno->id) {
+                                    $update = $asistencia_existente->update([
+                                        'tipo_asistencia_turno_id'  => $tipo_asistencia_turno->id
+                                    ]);
+                                }
+                                if ($update) {
+                                    $this->actualizados++;
+                                }
                             }
                         }
                     }
@@ -76,6 +92,27 @@ class AsistenciaImportStore implements ToModel, WithHeadingRow, WithValidation
         } catch (\Exception $error) {
             return $error->getMessage();
         }
+    }
+
+    public function existAsistencia($date, $tipo_asistencia_turno_id, $funcionario_id, $establecimiento_id)
+    {
+        $existe = false;
+
+
+        $fecha_format = Carbon::parse($date->format('Y-m-d'))->format('Y-m-d');
+
+        $asistencia = Asistencia::where('fecha', $fecha_format)
+            ->where('user_id', $funcionario_id)
+            ->where('recarga_id', $this->recarga->id)
+            ->where('establecimiento_id', $establecimiento_id)
+            /* ->where('tipo_asistencia_turno_id', $tipo_asistencia_turno_id) */
+            ->first();
+
+        if ($asistencia) {
+            $existe = true;
+        }
+
+        return array($existe, $asistencia);
     }
 
     public function transformDateExcel($number)
