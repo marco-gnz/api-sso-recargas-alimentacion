@@ -68,7 +68,8 @@ class RecargasController extends Controller
             'establecimiento',
             'userCreatedBy',
             'userUpdateBy',
-            'users'
+            'users',
+            'reajustes'
         ];
 
         return $with;
@@ -77,7 +78,7 @@ class RecargasController extends Controller
     public function returnRecargas()
     {
         try {
-            $recargas = Recarga::orderBy('anio', 'asc')->orderBy('mes', 'asc')->get();
+            $recargas = Recarga::withCount('users')->withCount('reajustes')->withCount('contratos')->withCount('viaticos')->orderBy('anio_beneficio', 'asc')->orderBy('mes_beneficio', 'asc')->get();
 
             return $this->successResponse(RecargaResource::collection($recargas), null, null, 200);
         } catch (\Exception $error) {
@@ -90,7 +91,7 @@ class RecargasController extends Controller
     {
         try {
             $with = $this->withRecarga();
-            $recarga = Recarga::where('codigo', $codigo)->with($with)->withCount('users')->first();
+            $recarga = Recarga::where('codigo', $codigo)->with($with)->withCount('users')->withCount('reajustes')->withCount('contratos')->withCount('viaticos')->first();
 
             if ($recarga) {
                 return $this->successResponse(RecargaResource::make($recarga), null, null, 200);
@@ -108,20 +109,14 @@ class RecargasController extends Controller
     {
         try {
             $existe             = $this->validateDuplicateRecarga($request);
-            $max_dias_habiles   = $this->validateDiasHabiles($request);
 
             if ($existe) {
                 return response()->json([
                     'errors' => ['data' => ['No es posible ingresar la recarga, existe un registro idéntico.']]
                 ], 422);
-            } else if ($max_dias_habiles[0]) {
-                return response()->json([
-                    'errors' => ['total_dias_habiles' => ['Días habiles debe ser igual o menor a ' . $max_dias_habiles[1] . ' días']]
-                ], 422);
             } else {
                 $with = $this->withRecarga();
-                $form = ['anio', 'mes', 'total_dias_mes', 'total_dias_habiles', 'monto_dia', 'establecimiento_id'];
-
+                $form = ['anio_beneficio', 'mes_beneficio', 'anio_calculo', 'mes_calculo', 'monto_dia', 'establecimiento_id'];
                 $recarga = Recarga::create($request->only($form));
 
                 if ($recarga) {
@@ -146,28 +141,20 @@ class RecargasController extends Controller
             $recarga = Recarga::find($id);
 
             if ($recarga) {
-                $max_dias_habiles   = $this->validateDiasHabiles($request);
+                $with = $this->withRecarga();
+                $form = ['monto_dia'];
+                $update = $recarga->update($request->only($form));
 
-                if ($max_dias_habiles[0]) {
-                    return response()->json([
-                        'errors' => ['total_dias_habiles' => ['Días habiles debe ser igual o menor a ' . $max_dias_habiles[1] . ' días']]
-                    ], 422);
+                if ($update) {
+                    $estado = SeguimientoRecarga::create([
+                        'recarga_id'    => $recarga->id,
+                        'estado_id'     => 7
+                    ]);
+                    $with       = $this->withRecarga();
+                    $recarga    = $recarga->fresh($with);
+                    return $this->successResponse(RecargaResource::make($recarga), 'Recarga con código #' . $recarga->codigo . ' editada con éxito.', null, 200);
                 } else {
-                    $with = $this->withRecarga();
-                    $form = ['total_dias_habiles', 'monto_dia'];
-                    $update = $recarga->update($request->only($form));
-
-                    if ($update) {
-                        $estado = SeguimientoRecarga::create([
-                            'recarga_id'    => $recarga->id,
-                            'estado_id'     => 7
-                        ]);
-                        $with       = $this->withRecarga();
-                        $recarga    = $recarga->fresh($with);
-                        return $this->successResponse(RecargaResource::make($recarga), 'Recarga con código #' . $recarga->codigo . ' editada con éxito.', null, 200);
-                    } else {
-                        return $this->errorResponse('Error de servidor', 500);
-                    }
+                    return $this->errorResponse('Error de servidor', 500);
                 }
             } else {
                 return $this->errorResponse('Error de servidor', 500);
@@ -207,10 +194,12 @@ class RecargasController extends Controller
     {
         try {
             $existe = false;
+            $fecha_beneficio = Carbon::parse($request->fecha_beneficio);
+
             $recarga = Recarga::where('active', true)
                 ->where('establecimiento_id', $request->establecimiento_id)
-                ->where('anio', $request->anio)
-                ->where('mes', $request->mes)
+                ->where('anio_beneficio', $fecha_beneficio->format('Y'))
+                ->where('mes_beneficio', $fecha_beneficio->format('m'))
                 ->first();
 
             if ($recarga) {
@@ -218,23 +207,6 @@ class RecargasController extends Controller
             }
 
             return $existe;
-        } catch (\Exception $error) {
-            return $error->getMessage();
-        }
-    }
-
-    private function validateDiasHabiles($request)
-    {
-        try {
-            $max            = false;
-            $tz             = 'America/Santiago';
-            $days_in_month  = Carbon::createFromDate($request->anio, $request->mes, '01', $tz)->daysInMonth + 1;
-
-            if ((int)$request->total_dias_habiles > $days_in_month) {
-                $max = true;
-            }
-
-            return array($max, $days_in_month);
         } catch (\Exception $error) {
             return $error->getMessage();
         }

@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\Admin\Modulos;
 
 use App\Http\Controllers\Controller;
+use App\Models\Hora;
+use App\Models\Ley;
+use App\Models\Meridiano;
 use App\Models\Recarga;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -17,7 +20,8 @@ class ColumnasImportController extends Controller
     public $numerico    = 'Numérico';
     public $texto       = 'Texto';
     public $fecha       = 'yyyy-mm-dd';
-    public $fecha_2     = 'formato fecha excel (Ej: dd-mm-yyyy)';
+    public $fecha_2     = 'Formato fecha excel (Ej: dd-mm-yyyy)';
+    public $hora        = 'H:m:s';
 
     private function anio()
     {
@@ -33,6 +37,8 @@ class ColumnasImportController extends Controller
 
     public function columasImportarFuncionarios()
     {
+        $first_ley  = Ley::first();
+        $first_hora = Hora::first();
         $columnas   = [
             [
                 'nombre_columna'        => 'rut',
@@ -87,6 +93,36 @@ class ColumnasImportController extends Controller
                 'formato'               => $this->numerico,
                 'required'              => true,
                 'descripcion'           => 'Código en SIRH'
+            ],
+            [
+                'nombre_columna'        => 'ley',
+                'formato'               => $this->texto,
+                'required'              => true,
+                'descripcion'           => $first_ley != null ? "(Ej: {$first_ley->nombre})" : 'Sin datos'
+            ],
+            [
+                'nombre_columna'        => 'horas',
+                'formato'               => $this->numerico,
+                'required'              => true,
+                'descripcion'           => $first_hora != null ? "(Ej: {$first_hora->nombre})" : 'Sin datos'
+            ],
+            [
+                'nombre_columna'        => 'fecha inicio contrato',
+                'formato'               => $this->fecha_2,
+                'required'              => true,
+                'descripcion'           => "Fecha de inicio contrato"
+            ],
+            [
+                'nombre_columna'        => 'fecha termino contrato',
+                'formato'               => $this->fecha_2,
+                'required'              => true,
+                'descripcion'           => 'Fecha de término contrato'
+            ],
+            [
+                'nombre_columna'        => 'fecha de alejamiento',
+                'formato'               => $this->fecha_2,
+                'required'              => true,
+                'descripcion'           => 'Fecha de alejamiento de contrato'
             ]
         ];
         return $columnas;
@@ -129,6 +165,110 @@ class ColumnasImportController extends Controller
         return $columnas;
     }
 
+    public function columnasImportGrupoDos()
+    {
+        $columnas   = [
+            [
+                'nombre_columna'        => 'rut',
+                'formato'               => $this->numerico,
+                'required'              => true,
+                'descripcion'           => 'Rut de funcionario'
+            ],
+            [
+                'nombre_columna'        => 'dv',
+                'formato'               => $this->texto,
+                'required'              => true,
+                'descripcion'           => 'Dígito verificador'
+            ],
+            [
+                'nombre_columna'        => 'nombretipoausentismo',
+                'formato'               => $this->texto,
+                'required'              => true,
+                'descripcion'           => 'Nombre de tipo de ausentismo'
+            ],
+            [
+                'nombre_columna'        => 'fechainicio',
+                'formato'               => $this->fecha,
+                'required'              => true,
+                'descripcion'           => 'Fecha de inicio ausentimo'
+            ],
+            [
+                'nombre_columna'        => 'fechatermino',
+                'formato'               => $this->fecha,
+                'required'              => true,
+                'descripcion'           => 'Fecha de término ausentimo'
+            ],
+            [
+                'nombre_columna'        => 'total ausentismo',
+                'formato'               => $this->numerico,
+                'required'              => true,
+                'descripcion'           => 'Ej. -0.5, -1,  -1.5, -2, etc.'
+            ],
+            [
+                'nombre_columna'        => 'meridiano',
+                'formato'               => $this->texto,
+                'required'              => true,
+                'descripcion'           => Meridiano::all()->pluck('nombre')->implode(' - ')
+            ]
+        ];
+        return $columnas;
+    }
+
+    public function columnasImportGrupoTres()
+    {
+        $columnas   = [
+            [
+                'nombre_columna'        => 'rut',
+                'formato'               => $this->numerico,
+                'required'              => true,
+                'descripcion'           => 'Rut de funcionario'
+            ],
+            [
+                'nombre_columna'        => 'dv',
+                'formato'               => $this->texto,
+                'required'              => true,
+                'descripcion'           => 'Dígito verificador'
+            ],
+            [
+                'nombre_columna'        => 'nombretipoausentismo',
+                'formato'               => $this->texto,
+                'required'              => true,
+                'descripcion'           => 'Nombre de tipo de ausentismo'
+            ],
+            [
+                'nombre_columna'        => 'fechainicio',
+                'formato'               => $this->fecha,
+                'required'              => true,
+                'descripcion'           => 'Fecha de inicio ausentimo'
+            ],
+            [
+                'nombre_columna'        => 'fechatermino',
+                'formato'               => $this->fecha,
+                'required'              => true,
+                'descripcion'           => 'Fecha de término ausentimo'
+            ],
+            [
+                'nombre_columna'        => 'horainicio',
+                'formato'               => $this->hora,
+                'required'              => true,
+                'descripcion'           => 'Hora de inicio ausentimo. Ej. 11:00'
+            ],
+            [
+                'nombre_columna'        => 'horatermino',
+                'formato'               => $this->hora,
+                'required'              => true,
+                'descripcion'           => 'Hora de término ausentimo. Ej. 16:00'
+            ],
+            /* [
+                'nombre_columna'        => 'total horas',
+                'formato'               => $this->numerico,
+                'required'              => true,
+                'descripcion'           => 'Ej. 1, 5, 9, etc.'
+            ] */
+        ];
+        return $columnas;
+    }
+
     public function columnasImportTurnos()
     {
         $columnas   = [
@@ -145,6 +285,12 @@ class ColumnasImportController extends Controller
                 'descripcion'           => 'Dígito verificador'
             ],
             [
+                'nombre_columna'        => 'folio',
+                'formato'               => $this->texto,
+                'required'              => false,
+                'descripcion'           => 'N° de folio'
+            ],
+            [
                 'nombre_columna'        => 'proceso',
                 'formato'               => $this->texto,
                 'required'              => true,
@@ -154,37 +300,13 @@ class ColumnasImportController extends Controller
                 'nombre_columna'        => 'ano pago',
                 'formato'               => $this->numerico,
                 'required'              => true,
-                'descripcion'           => "Año de pago. (Ej: {$this->anio()})"
+                'descripcion'           => "Año de pago."
             ],
             [
                 'nombre_columna'        => 'mes pago',
                 'formato'               => $this->numerico,
                 'required'              => true,
-                'descripcion'           => "Mes de pago. (Ej: {$this->mes()})"
-            ],
-            [
-                'nombre_columna'        => 'calidad juridica',
-                'formato'               => $this->texto,
-                'required'              => true,
-                'descripcion'           => 'Calidad juridica del funcionario'
-            ],
-            [
-                'nombre_columna'        => 'estab',
-                'formato'               => $this->numerico,
-                'required'              => true,
-                'descripcion'           => 'Código de establecimiento pago'
-            ],
-            [
-                'nombre_columna'        => 'unidad',
-                'formato'               => $this->texto,
-                'required'              => true,
-                'descripcion'           => 'Nombre de unidad'
-            ],
-            [
-                'nombre_columna'        => 'planta',
-                'formato'               => $this->texto,
-                'required'              => true,
-                'descripcion'           => 'Nombre de planta de funcionario'
+                'descripcion'           => "Mes de pago"
             ],
             [
                 'nombre_columna'        => 'asignacion tercer turno',
@@ -226,8 +348,8 @@ class ColumnasImportController extends Controller
 
         if ($recarga) {
             $tz         = 'America/Santiago';
-            $inicio     = Carbon::createFromDate($recarga->anio, $recarga->mes, '01', $tz);
-            $termino    = Carbon::createFromDate($recarga->anio, $recarga->mes, '01', $tz)->endOfMonth();
+            $inicio     = Carbon::createFromDate($recarga->anio_beneficio, $recarga->mes_beneficio, '01', $tz);
+            $termino    = Carbon::createFromDate($recarga->anio_beneficio, $recarga->mes_beneficio, '01', $tz)->endOfMonth();
 
             $inicio     = $inicio->format('Y-m-d');
             $termino    = $termino->format('Y-m-d');
@@ -283,8 +405,8 @@ class ColumnasImportController extends Controller
 
         if ($recarga) {
             $tz         = 'America/Santiago';
-            $inicio     = Carbon::createFromDate($recarga->anio, $recarga->mes, '01', $tz);
-            $termino    = Carbon::createFromDate($recarga->anio, $recarga->mes, '01', $tz)->endOfMonth();
+            $inicio     = Carbon::createFromDate($recarga->anio_beneficio, $recarga->mes_beneficio, '01', $tz);
+            $termino    = Carbon::createFromDate($recarga->anio_beneficio, $recarga->mes_beneficio, '01', $tz)->endOfMonth();
 
             $inicio     = $inicio->format('Y-m-d');
             $termino    = $termino->format('Y-m-d');
@@ -298,12 +420,86 @@ class ColumnasImportController extends Controller
                         'formato_excel'         => (int)$format_excel,
                         'required'              => true,
                         'descripcion'           => "Corresponde a {$i_format}",
-                        'disabled'              => true
+                        'disabled'              => true,
+                        'is_week_day'           => Carbon::parse($i_format)->isWeekend()
                     ];
 
                 array_push($columnas, $data);
             }
         }
+        return $columnas;
+    }
+
+    public function columnasImportViaticos()
+    {
+        $columnas   = [
+            [
+                'nombre_columna'        => 'rut',
+                'formato'               => $this->numerico,
+                'required'              => true,
+                'descripcion'           => 'Rut de funcionario'
+            ],
+            [
+                'nombre_columna'        => 'dv',
+                'formato'               => $this->texto,
+                'required'              => true,
+                'descripcion'           => 'Dígito verificador'
+            ],
+            [
+                'nombre_columna'        => 'fechainicio',
+                'formato'               => $this->fecha,
+                'required'              => true,
+                'descripcion'           => 'Fecha inicio de viático'
+            ],
+            [
+                'nombre_columna'        => 'fechatermino',
+                'formato'               => $this->fecha,
+                'required'              => true,
+                'descripcion'           => 'Fecha término de viático'
+            ],
+            [
+                'nombre_columna'        => 'jornada',
+                'formato'               => $this->texto,
+                'required'              => true,
+                'descripcion'           => 'Jornada (MAÑANA, TODO EL DÍA, NOCHE, ETC.)'
+            ],
+            [
+                'nombre_columna'        => 'tiporesolucion',
+                'formato'               => $this->texto,
+                'required'              => true,
+                'descripcion'           => 'Tipo de resolución (EXENTA - DECRETO)'
+            ],
+            [
+                'nombre_columna'        => 'numeroresolucion',
+                'formato'               => $this->numerico,
+                'required'              => true,
+                'descripcion'           => "Número de resolución"
+            ],
+            [
+                'nombre_columna'        => 'fecharesolucion',
+                'formato'               => $this->fecha,
+                'required'              => true,
+                'descripcion'           => 'Fecha de resolución'
+            ],
+            [
+                'nombre_columna'        => 'tipocomision',
+                'formato'               => $this->texto,
+                'required'              => true,
+                'descripcion'           => 'Tipo de comisión (Ej. Servicios, Capacitación, etc.)'
+            ],
+            [
+                'nombre_columna'        => 'motivoviatico',
+                'formato'               => $this->texto,
+                'required'              => true,
+                'descripcion'           => 'Motivo de viático (Ej. TRASLADO DE PACIENTE, ATENCION POSTA SALUD RURAL, ETC.)'
+            ],
+            [
+                'nombre_columna'        => 'valorviatico',
+                'formato'               => $this->numerico,
+                'required'              => true,
+                'descripcion'           => "Valor de viático"
+            ],
+        ];
         return $columnas;
     }
 }
