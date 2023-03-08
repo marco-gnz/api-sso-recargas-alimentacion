@@ -22,8 +22,11 @@ class Ausentismo extends Model
         'fecha_termino_periodo',
         'total_dias_ausentismo',
         'total_dias_ausentismo_periodo',
+        'total_dias_habiles_ausentismo_periodo',
         'hora_inicio',
         'hora_termino',
+        'total_horas_ausentismo',
+        'tiene_descuento',
         'user_id',
         'tipo_ausentismo_id',
         'regla_id',
@@ -60,12 +63,53 @@ class Ausentismo extends Model
         return $this->belongsTo(Regla::class, 'regla_id');
     }
 
+    public function tipoAusentismo()
+    {
+        return $this->belongsTo(TipoAusentismo::class, 'tipo_ausentismo_id');
+    }
+
+    public function establecimiento()
+    {
+        return $this->belongsTo(Establecimiento::class, 'establecimiento_id');
+    }
+
+    public function unidad()
+    {
+        return $this->belongsTo(Unidad::class, 'unidad_id');
+    }
+
+    public function planta()
+    {
+        return $this->belongsTo(Planta::class, 'planta_id');
+    }
+
+    public function cargo()
+    {
+        return $this->belongsTo(Cargo::class, 'cargo_id');
+    }
+
+    public function meridiano()
+    {
+        return $this->belongsTo(Meridiano::class, 'meridiano_id');
+    }
+
     protected static function booted()
     {
         static::creating(function ($ausentismo) {
-            $ausentismo->uuid                  = Str::uuid();
-            $ausentismo->user_created_by   = Auth::user()->id;
-            $ausentismo->date_created_user = Carbon::now()->toDateTimeString();
+            $days = 0;
+            $inicio     = Carbon::parse($ausentismo->fecha_inicio_periodo)->format('Y-m-d');
+            $termino    = Carbon::parse($ausentismo->fecha_termino_periodo)->format('Y-m-d');
+            for ($i = $inicio; $i <= $termino; $i++) {
+                $i_format       = Carbon::parse($i)->isWeekend();
+                if($i_format){
+                    $days++;
+                }
+            }
+
+            $ausentismo->uuid                   = Str::uuid();
+            $ausentismo->user_created_by        = Auth::user()->id;
+            $ausentismo->date_created_user      = Carbon::now()->toDateTimeString();
+            $ausentismo->total_dias_habiles_ausentismo_periodo = ($ausentismo->total_dias_ausentismo_periodo - $days);
         });
 
         static::updating(function ($ausentismo) {

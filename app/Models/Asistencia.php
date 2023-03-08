@@ -50,12 +50,33 @@ class Asistencia extends Model
         return $this->belongsTo(TipoAsistenciaTurno::class, 'tipo_asistencia_turno_id');
     }
 
+    public function observaciones()
+    {
+        return $this->hasMany(ObservacionesAsistencia::class)->orderBy('created_at', 'desc');
+    }
+
+    public function userCreatedBy()
+    {
+        return $this->belongsTo(User::class, 'user_created_by');
+    }
+
+    public function createobservaciones(array $attributes)
+    {
+        $this->observaciones()->create($attributes);
+    }
+
     protected static function booted()
     {
         static::creating(function ($asistencia) {
             $asistencia->uuid                   = Str::uuid();
             $asistencia->user_created_by        = Auth::user()->id;
             $asistencia->date_created_user      = Carbon::now()->toDateTimeString();
+
+            $asistencia->createobservaciones([
+                'fecha'                     => $asistencia->fecha,
+                'asistencia_id'             => $asistencia->id,
+                'tipo_asistencia_turno_id'  => $asistencia->tipo_asistencia_turno_id
+            ]);
         });
 
         static::updating(function ($asistencia) {

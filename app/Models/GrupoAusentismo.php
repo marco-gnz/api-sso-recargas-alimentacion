@@ -7,7 +7,19 @@ use Illuminate\Database\Eloquent\Model;
 
 class GrupoAusentismo extends Model
 {
-    use HasFactory;
+    protected $table = "grupo_ausentismos";
+    protected $primaryKey = 'id';
+
+    protected $fillable = [
+        'n_grupo',
+        'nombre',
+        'descripcion'
+    ];
 
     public $timestamps = false;
+
+    public function ausentismos()
+    {
+        return $this->hasMany(Ausentismo::class);
+    }
 }

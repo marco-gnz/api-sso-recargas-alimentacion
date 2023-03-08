@@ -17,6 +17,7 @@ class UserTurno extends Model
         'uuid',
         'anio',
         'mes',
+        'folio',
         'asignacion_tercer_turno',
         'bonificacion_asignacion_turno',
         'asignacion_cuarto_turno',

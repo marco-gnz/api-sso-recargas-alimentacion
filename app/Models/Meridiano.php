@@ -11,6 +11,14 @@ class Meridiano extends Model
 
     public $timestamps = false;
 
+    protected $table = "meridianos";
+    protected $primaryKey = 'id';
+
+    protected $fillable = [
+        'nombre',
+        'codigo'
+    ];
+
     public function reglas()
     {
         return $this->belongsToMany(Regla::class);

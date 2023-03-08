@@ -35,10 +35,6 @@ class User extends Authenticatable
         'email',
         'password',
         'turno',
-        'establecimiento_id',
-        'unidad_id',
-        'planta_id',
-        'cargo_id',
         'usuario_add_id',
         'fecha_add'
     ];
@@ -74,29 +70,24 @@ class User extends Authenticatable
         return $this->hasMany(Asistencia::class);
     }
 
+    public function reajustes()
+    {
+        return $this->hasMany(Reajuste::class)->orderBy('fecha_inicio', 'desc');
+    }
+
     public function turnos()
     {
         return $this->hasMany(UserTurno::class);
     }
 
-    public function establecimiento()
+    public function viaticos()
     {
-        return $this->belongsTo(Establecimiento::class, 'establecimiento_id');
+        return $this->hasMany(Viatico::class);
     }
 
-    public function unidad()
+    public function contratos()
     {
-        return $this->belongsTo(Unidad::class, 'unidad_id');
-    }
-
-    public function planta()
-    {
-        return $this->belongsTo(Planta::class, 'planta_id');
-    }
-
-    public function cargo()
-    {
-        return $this->belongsTo(Cargo::class, 'cargo_id');
+        return $this->hasMany(RecargaContrato::class);
     }
 
     public function recargas()
@@ -108,8 +99,8 @@ class User extends Authenticatable
     {
         static::creating(function ($usuario) {
             $usuario->uuid                  = Str::uuid();
-            $usuario->rut_completo          = $usuario->rut.'-'.$usuario->dv;
-            $usuario->nombre_completo       = $usuario->nombres.' '.$usuario->apellidos;
+            $usuario->rut_completo          = $usuario->rut . '-' . $usuario->dv;
+            $usuario->nombre_completo       = $usuario->nombres . ' ' . $usuario->apellidos;
             $usuario->password              = bcrypt($usuario->rut);
             /* $usuario->usuario_add_id        = Auth::user()->id; */
             $usuario->fecha_add             = Carbon::now()->toDateTimeString();
@@ -119,5 +110,15 @@ class User extends Authenticatable
             $usuario->usuario_update_id         = Auth::user()->id;
             $usuario->fecha_update              = Carbon::now()->toDateTimeString();
         });
+    }
+
+    public function scopeInput($query, $input)
+    {
+        if ($input)
+            return $query->where('rut_completo', 'like', '%' . $input . '%')
+                ->orWhere('rut', 'like', '%' . $input . '%')
+                ->orWhere('nombres', 'like', '%' . $input . '%')
+                ->orWhere('apellidos', 'like', '%' . $input . '%')
+                ->orWhere('nombre_completo', 'like', '%' . $input . '%');
     }
 }

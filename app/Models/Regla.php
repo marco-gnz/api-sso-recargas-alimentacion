@@ -14,6 +14,7 @@ class Regla extends Model
         'hora_inicio',
         'hora_termino',
         'active',
+        'turno_funcionario',
         'grupo_id',
         'recarga_id',
         'tipo_ausentismo_id'
@@ -37,5 +38,10 @@ class Regla extends Model
     public function meridianos()
     {
         return $this->belongsToMany(Meridiano::class);
+    }
+
+    public function ausentismos()
+    {
+        return $this->hasMany(Ausentismo::class);
     }
 }
