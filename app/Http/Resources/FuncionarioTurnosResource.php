@@ -24,10 +24,6 @@ class FuncionarioTurnosResource extends JsonResource
             'es_turnante'                       => $this->es_turnante ? true : false,
 
             'nombre_proceso'                    => $this->proceso != null ? $this->proceso->nombre : null,
-            'nombre_calidad'                    => $this->calidad != null ? $this->calidad->nombre : null,
-            'nombre_establecimiento'            => $this->establecimiento != null ? $this->establecimiento->sigla : null,
-            'nombre_unidad'                     => $this->unidad != null ? $this->unidad->nombre : null,
-            'nombre_planta'                     => $this->planta != null ? $this->planta->nombre : null
         ];
     }
 }
