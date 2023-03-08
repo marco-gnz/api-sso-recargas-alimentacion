@@ -21,6 +21,9 @@ class DatabaseSeeder extends Seeder
         $this->call(GruposAusentismosSeeder::class);
         $this->call(MeridianosSeeder::class);
         $this->call(PlantasSeeder::class);
+        $this->call(HorasSeeder::class);
+        $this->call(LeyesSeeder::class);
+        $this->call(EstablecimientosSeeder::class);
 
         DB::statement('SET FOREIGN_KEY_CHECKS=1;');
 

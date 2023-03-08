@@ -15,7 +15,7 @@ class CreateUnidadsTable extends Migration
     {
         Schema::create('unidads', function (Blueprint $table) {
             $table->bigIncrements('id');
-            $table->integer('cod_sirh')->nullable();
+            $table->string('cod_sirh')->nullable();
             $table->string('nombre');
             $table->timestamps();
         });

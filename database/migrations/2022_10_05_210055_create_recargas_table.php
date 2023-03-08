@@ -16,11 +16,15 @@ class CreateRecargasTable extends Migration
         Schema::create('recargas', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->string('codigo')->unique()->nullable();
-            $table->year('anio');
-            $table->string('mes');
-            $table->integer('total_dias_mes');
-            $table->integer('total_dias_habiles');
-            $table->decimal('monto_dia', 10, 0)->nullable();
+            $table->year('anio_beneficio');
+            $table->string('mes_beneficio');
+            $table->integer('total_dias_mes_beneficio');
+            $table->integer('total_dias_laborales_beneficio');
+            $table->year('anio_calculo');
+            $table->string('mes_calculo');
+            $table->integer('total_dias_mes_calculo');
+            $table->integer('total_dias_laborales_calculo');
+            $table->bigInteger('monto_dia')->nullable();
             $table->boolean('active')->default(1);
 
             $table->foreign('establecimiento_id')->references('id')->on('establecimientos');

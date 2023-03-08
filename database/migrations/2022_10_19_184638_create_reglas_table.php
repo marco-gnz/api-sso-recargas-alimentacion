@@ -18,6 +18,7 @@ class CreateReglasTable extends Migration
             $table->time('hora_inicio')->nullable();
             $table->time('hora_termino')->nullable();
             $table->boolean('active')->default(1);
+            $table->boolean('turno_funcionario')->nullable(); //0=no turnante 1=turnante
 
             $table->foreign('grupo_id')->references('id')->on('grupo_ausentismos');
             $table->unsignedBigInteger('grupo_id')->nullable();

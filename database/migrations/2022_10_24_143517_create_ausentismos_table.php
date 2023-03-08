@@ -21,10 +21,13 @@ class CreateAusentismosTable extends Migration
             $table->date('fecha_termino')->nullable();
             $table->date('fecha_inicio_periodo')->nullable();
             $table->date('fecha_termino_periodo')->nullable();
-            $table->decimal('total_dias_ausentismo', 2, 0)->nullable();
-            $table->decimal('total_dias_ausentismo_periodo', 2, 0)->nullable();
+            $table->decimal('total_dias_ausentismo', 6, 1)->nullable();
+            $table->decimal('total_dias_ausentismo_periodo', 6, 1)->nullable();
+            $table->decimal('total_dias_habiles_ausentismo_periodo', 6, 1)->nullable();
             $table->time('hora_inicio')->nullable();
             $table->time('hora_termino')->nullable();
+            $table->decimal('total_horas_ausentismo', 6, 1)->nullable();
+            $table->boolean('tiene_descuento')->nullable();
 
             $table->foreign('user_id')->references('id')->on('users');
             $table->unsignedBigInteger('user_id')->nullable();

@@ -15,6 +15,7 @@ class CreateMeridianosTable extends Migration
     {
         Schema::create('meridianos', function (Blueprint $table) {
             $table->bigIncrements('id');
+            $table->string('codigo')->nullable();
             $table->string('nombre');
         });
     }

@@ -29,18 +29,6 @@ class CreateUsersTable extends Migration
             $table->string('password')->nullable();
             $table->rememberToken();
 
-            $table->foreign('establecimiento_id')->references('id')->on('establecimientos');
-            $table->unsignedBigInteger('establecimiento_id')->nullable();
-
-            $table->foreign('unidad_id')->references('id')->on('unidads');
-            $table->unsignedBigInteger('unidad_id')->nullable();
-
-            $table->foreign('planta_id')->references('id')->on('plantas');
-            $table->unsignedBigInteger('planta_id')->nullable();
-
-            $table->foreign('cargo_id')->references('id')->on('cargos');
-            $table->unsignedBigInteger('cargo_id')->nullable();
-
             $table->unsignedBigInteger('usuario_add_id')->nullable();
             $table->foreign('usuario_add_id')->references('id')->on('users');
             $table->dateTime('fecha_add', 0)->nullable();

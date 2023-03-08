@@ -16,16 +16,19 @@ class GruposAusentismosSeeder extends Seeder
     {
         GrupoAusentismo::truncate(); //evita duplicar datos
         $grupo = new GrupoAusentismo();
+        $grupo->n_grupo = 1;
         $grupo->nombre = 'GRUPO 1';
         $grupo->descripcion = 'Grupo de ausentismos que valida días enteros.';
         $grupo->save();
 
         $grupo = new GrupoAusentismo();
+        $grupo->n_grupo = 2;
         $grupo->nombre = 'GRUPO 2';
         $grupo->descripcion = 'Grupo de ausentismos que valida días en formato de media jornada (0.5).';
         $grupo->save();
 
         $grupo = new GrupoAusentismo();
+        $grupo->n_grupo = 3;
         $grupo->nombre = 'GRUPO 3';
         $grupo->descripcion = 'Grupo de ausentismos que valida descuentos en un rango de hora.';
         $grupo->save();

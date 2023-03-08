@@ -15,6 +15,7 @@ class CreateGrupoAusentismosTable extends Migration
     {
         Schema::create('grupo_ausentismos', function (Blueprint $table) {
             $table->bigIncrements('id');
+            $table->string('n_grupo')->nullable();
             $table->string('nombre');
             $table->string('descripcion')->nullable();
             $table->boolean('estado')->default(1);
