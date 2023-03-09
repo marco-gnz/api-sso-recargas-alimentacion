@@ -115,6 +115,8 @@ class RecargaResumenResource extends JsonResource
             'reajustes_count'               => $this->reajustes_count,
             'contratos_count'               => $this->contratos_count,
             'viaticos_count'                => $this->viaticos_count,
+            'ausentismos_count'             => $this->ausentismos_count,
+            'asignaciones_count'            => $this->asignaciones_count,
             'total_grupos'                  => $this->totalAusentismosGrupos($this),
             'monto_total'                   => 0,
 

@@ -147,7 +147,7 @@ class RecargaReajustesController extends Controller
     {
         try {
             $with           = $this->withRecarga();
-            $recarga        = Recarga::with($with)->where('codigo', $request->recarga_codigo)->withCount('users')->withCount('reajustes')->withCount('contratos')->withCount('viaticos')->first();
+            $recarga        = Recarga::with($with)->where('codigo', $request->recarga_codigo)->withCount('users')->withCount('ausentismos')->withCount('reajustes')->withCount('contratos')->withCount('viaticos')->first();
 
             $withFnAusentismos      = $this->withFnAusentismos($recarga);
             $withFnContratos        = $this->withFnContratos($recarga);

@@ -47,6 +47,11 @@ class Recarga extends Model
         return $this->hasMany(Viatico::class);
     }
 
+    public function asignaciones()
+    {
+        return $this->hasMany(UserTurno::class);
+    }
+
     public function reglas()
     {
         return $this->hasMany(Regla::class);

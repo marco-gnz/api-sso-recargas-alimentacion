@@ -13,11 +13,30 @@ class RecargaViaticosResource extends JsonResource
      * @param  \Illuminate\Http\Request  $request
      * @return array|\Illuminate\Contracts\Support\Arrayable|\JsonSerializable
      */
+    private function existeFuncionarioEnRecarga($funcionario, $recarga)
+    {
+        $existe = false;
+
+        $query_results = $recarga->whereHas('users', function ($query) use ($funcionario) {
+            $query->where('recarga_user.user_id', $funcionario->id);
+        })->whereHas('contratos', function ($query) use ($funcionario) {
+            $query->where('user_id', $funcionario->id);
+        })
+            ->count();
+
+        if ($query_results > 0) {
+            $existe = true;
+        }
+        return $existe;
+    }
+
     public function toArray($request)
     {
         $feriados_count             = $this->recarga->feriados()->where('active', true)->whereBetween('fecha', [$this->fecha_inicio_periodo, $this->fecha_termino_periodo])->count();
         $valor_viatico              = $this->valor_viatico != null ? number_format($this->valor_viatico, 0, ",", ".") : null;
         $total_dias_habiles_periodo = ($this->total_dias_habiles_periodo - $feriados_count);
+
+        $existe_funcionario_en_recarga = $this->existeFuncionarioEnRecarga($this->funcionario, $this->recarga);
 
         return [
             'uuid'                      => $this->uuid,
@@ -35,7 +54,8 @@ class RecargaViaticosResource extends JsonResource
             'fecha_resolucion'          => $this->fecha_resolucion ? Carbon::parse($this->fecha_resolucion)->format('d-m-Y') : NULL,
             'tipo_comision'             => $this->tipo_comision ? $this->tipo_comision : NULL,
             'motivo_viatico'            => $this->motivo_viatico ? $this->motivo_viatico : NULL,
-            'valor_viatico'             => $this->valor_viatico ? "$".$valor_viatico : NULL
+            'valor_viatico'             => $this->valor_viatico ? "$".$valor_viatico : NULL,
+            'existe_funcionario'        => $existe_funcionario_en_recarga
         ];
     }
 }

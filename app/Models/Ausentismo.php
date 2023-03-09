@@ -117,4 +117,18 @@ class Ausentismo extends Model
             $ausentismo->date_updated_user = Carbon::now()->toDateTimeString();
         });
     }
+
+    public function scopeInput($query, $input)
+    {
+        if ($input)
+            return $query->where(function ($query) use ($input) {
+                $query->whereHas('funcionario', function ($query) use ($input) {
+                    $query->where('rut_completo', 'like', '%' . $input . '%')
+                        ->orWhere('rut', 'like', '%' . $input . '%')
+                        ->orWhere('nombres', 'like', '%' . $input . '%')
+                        ->orWhere('apellidos', 'like', '%' . $input . '%')
+                        ->orWhere('nombre_completo', 'like', '%' . $input . '%');
+                });
+            });
+    }
 }

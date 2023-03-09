@@ -136,6 +136,12 @@ Route::group(
         //recarga-viaticos-resumen
         Route::get('/admin/recargas/recarga/{codigo}/viaticos', [App\Http\Controllers\Admin\RecargaViaticosController::class, 'returnViaticosRecarga']);
 
+        //recarga-ausentismos-resumen
+        Route::get('/admin/recargas/recarga/{codigo}/ausentismos', [App\Http\Controllers\Admin\RecargaAusentismosController::class, 'returnAusentismosRecarga']);
+
+        //recarga-asignaciones-resumen
+        Route::get('/admin/recargas/recarga/{codigo}/asignaciones', [App\Http\Controllers\Admin\RecargaAsignacionesController::class, 'returnAsignacionesRecarga']);
+
         //regla-resumen
         Route::get('/admin/recargas/recarga/{codigo}/resumen', [App\Http\Controllers\Admin\RecargaResumenController::class, 'returnFindRecarga']);
         Route::get('/admin/recargas/recarga/{codigo}/funcionarios', [App\Http\Controllers\Admin\RecargaResumenController::class, 'returnFuncionariosToRecarga']);

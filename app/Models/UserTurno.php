@@ -93,4 +93,34 @@ class UserTurno extends Model
             $recarga->date_updated_user = Carbon::now()->toDateTimeString();
         });
     }
+
+    public function scopeInput($query, $input)
+    {
+        if ($input)
+            return $query->where(function ($query) use ($input) {
+                $query->whereHas('funcionario', function ($query) use ($input) {
+                    $query->where('rut_completo', 'like', '%' . $input . '%')
+                        ->orWhere('rut', 'like', '%' . $input . '%')
+                        ->orWhere('nombres', 'like', '%' . $input . '%')
+                        ->orWhere('apellidos', 'like', '%' . $input . '%')
+                        ->orWhere('nombre_completo', 'like', '%' . $input . '%');
+                });
+            });
+    }
+
+    public function scopeValueAsignaciones($query, $asignaciones)
+    {
+        if ($asignaciones)
+            return $query->where(function ($query) use ($asignaciones) {
+                if (in_array('3_turno', $asignaciones) && in_array('b_turno', $asignaciones)  && in_array('4_turno', $asignaciones)) {
+                    $query->where('asignacion_tercer_turno', '>', 0)->where('bonificacion_asignacion_turno', '>', 0)->where('asignacion_cuarto_turno', '>', 0);
+                } else if (in_array('3_turno', $asignaciones)) {
+                    $query->where('asignacion_tercer_turno', '>', 0);
+                } else if (in_array('b_turno', $asignaciones)) {
+                    $query->where('bonificacion_asignacion_turno', '>', 0);
+                } else if (in_array('4_turno', $asignaciones)) {
+                    $query->where('asignacion_cuarto_turno', '>', 0);
+                }
+            });
+    }
 }

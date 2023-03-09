@@ -13,8 +13,27 @@ class FuncionarioAusentismosResource extends JsonResource
      * @param  \Illuminate\Http\Request  $request
      * @return array|\Illuminate\Contracts\Support\Arrayable|\JsonSerializable
      */
+
+    private function existeFuncionarioEnRecarga($funcionario, $recarga)
+    {
+        $existe = false;
+
+        $query_results = $recarga->whereHas('users', function ($query) use ($funcionario) {
+            $query->where('recarga_user.user_id', $funcionario->id);
+        })->whereHas('contratos', function ($query) use ($funcionario) {
+            $query->where('user_id', $funcionario->id);
+        })
+            ->count();
+
+        if ($query_results > 0) {
+            $existe = true;
+        }
+        return $existe;
+    }
+
     public function toArray($request)
     {
+        $existe_funcionario_en_recarga = $this->existeFuncionarioEnRecarga($this->funcionario, $this->recarga);
         $feriados_count             = $this->recarga->feriados()->where('active', true)->whereBetween('fecha', [$this->fecha_inicio_periodo, $this->fecha_termino_periodo])->count();
         $valor_viatico              = $this->valor_viatico != null ? number_format($this->valor_viatico, 0, ",", ".") : null;
         $total_dias_habiles_periodo = ($this->total_dias_habiles_ausentismo_periodo - $feriados_count);
@@ -23,6 +42,8 @@ class FuncionarioAusentismosResource extends JsonResource
         $hora_termino  = $this->regla->hora_termino != null ? Carbon::parse($this->regla->hora_termino)->format('H:i') : null;
         return [
             'id'                            => $this->id,
+            'funcionario_uuid'              => $this->funcionario != null ? $this->funcionario->uuid : null,
+            'nombre_funcionario'            => $this->funcionario != null ? $this->funcionario->nombre_completo : null,
             'fecha_inicio'                  => $this->fecha_inicio != null ? Carbon::parse($this->fecha_inicio)->format('d-m-Y') : null,
             'fecha_termino'                 => $this->fecha_termino != null ? Carbon::parse($this->fecha_termino)->format('d-m-Y') : null,
             'fecha_inicio_periodo'          => $this->fecha_inicio_periodo != null ? Carbon::parse($this->fecha_inicio_periodo)->format('d-m-Y') : null,
@@ -39,7 +60,8 @@ class FuncionarioAusentismosResource extends JsonResource
             'hora_termino_regla'            => $hora_termino,
             'tiene_descuento'               => $this->tiene_descuento != null ? ($this->tiene_descuento ? true : false) : null,
             'total_horas'                   => $this->total_horas_ausentismo,
-            'regla'                         => $this->regla->hora_inicio != null ? "{$this->regla->hora_inicio} {$this->regla->hora_termino}" : null
+            'regla'                         => $this->regla->hora_inicio != null ? "{$this->regla->hora_inicio} {$this->regla->hora_termino}" : null,
+            'existe_funcionario'            => $existe_funcionario_en_recarga
         ];
     }
 }

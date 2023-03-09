@@ -78,7 +78,7 @@ class RecargasController extends Controller
     public function returnRecargas()
     {
         try {
-            $recargas = Recarga::withCount('users')->withCount('reajustes')->withCount('contratos')->withCount('viaticos')->orderBy('anio_beneficio', 'asc')->orderBy('mes_beneficio', 'asc')->get();
+            $recargas = Recarga::withCount('users')->withCount('ausentismos')->withCount('asignaciones')->withCount('reajustes')->withCount('contratos')->withCount('viaticos')->orderBy('anio_beneficio', 'asc')->orderBy('mes_beneficio', 'asc')->get();
 
             return $this->successResponse(RecargaResource::collection($recargas), null, null, 200);
         } catch (\Exception $error) {
@@ -91,7 +91,7 @@ class RecargasController extends Controller
     {
         try {
             $with = $this->withRecarga();
-            $recarga = Recarga::where('codigo', $codigo)->with($with)->withCount('users')->withCount('reajustes')->withCount('contratos')->withCount('viaticos')->first();
+            $recarga = Recarga::where('codigo', $codigo)->with($with)->withCount('users')->withCount('ausentismos')->withCount('asignaciones')->withCount('reajustes')->withCount('contratos')->withCount('viaticos')->first();
 
             if ($recarga) {
                 return $this->successResponse(RecargaResource::make($recarga), null, null, 200);

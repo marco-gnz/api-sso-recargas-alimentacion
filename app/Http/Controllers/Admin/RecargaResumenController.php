@@ -61,7 +61,7 @@ class RecargaResumenController extends Controller
     {
         try {
             $with = $this->withRecarga();
-            $recarga = Recarga::where('codigo', $codigo)->withCount('users')->withCount('reajustes')->withCount('contratos')->withCount('viaticos')->with($with)->first();
+            $recarga = Recarga::where('codigo', $codigo)->withCount('users')->withCount('ausentismos')->withCount('asignaciones')->withCount('reajustes')->withCount('contratos')->withCount('viaticos')->with($with)->first();
 
             if ($recarga) {
                 return $this->successResponse(RecargaResumenResource::make($recarga), null, null, 200);
@@ -136,7 +136,7 @@ class RecargaResumenController extends Controller
             $funcionarios   = [];
             $input_query    = $request->input;
             $with           = $this->withRecarga();
-            $recarga        = Recarga::with($with)->where('codigo', $codigo)->withCount('users')->withCount('reajustes')->withCount('contratos')->withCount('viaticos')->first();
+            $recarga        = Recarga::with($with)->where('codigo', $codigo)->withCount('users')->withCount('ausentismos')->withCount('asignaciones')->withCount('reajustes')->withCount('contratos')->withCount('viaticos')->first();
 
             $withFnAusentismos      = $this->withFnAusentismos($recarga);
             $withFnContratos        = $this->withFnContratos($recarga);
@@ -183,7 +183,7 @@ class RecargaResumenController extends Controller
     {
         try {
             $with           = $this->withRecarga();
-            $recarga        = Recarga::where('codigo', $request->codigo_recarga)->withCount('users')->withCount('reajustes')->withCount('contratos')->withCount('viaticos')->first();
+            $recarga        = Recarga::where('codigo', $request->codigo_recarga)->withCount('users')->withCount('ausentismos')->withCount('asignaciones')->withCount('reajustes')->withCount('contratos')->withCount('viaticos')->first();
 
             $withFnAusentismos      = $this->withFnAusentismos($recarga);
             $withFnContratos        = $this->withFnContratos($recarga);

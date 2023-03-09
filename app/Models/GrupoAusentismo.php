@@ -20,6 +20,6 @@ class GrupoAusentismo extends Model
 
     public function ausentismos()
     {
-        return $this->hasMany(Ausentismo::class);
+        return $this->hasMany(Ausentismo::class, 'grupo_id', 'id');
     }
 }
