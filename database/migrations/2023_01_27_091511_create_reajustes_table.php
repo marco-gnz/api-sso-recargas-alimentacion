@@ -18,10 +18,12 @@ class CreateReajustesTable extends Migration
             $table->string('uuid')->unique();
             $table->date('fecha_inicio')->nullable();
             $table->date('fecha_termino')->nullable();
+            $table->boolean('calculo_dias')->default(0);
             $table->boolean('incremento')->default(0); //0=rebaja 1=incremento
             $table->decimal('dias_periodo', 6, 1)->nullable();
+            $table->decimal('dias_periodo_habiles', 6, 1)->nullable();
+            $table->decimal('total_dias', 6, 1)->nullable();
             $table->bigInteger('valor_dia')->nullable();
-            $table->decimal('dias', 6, 1)->nullable();
             $table->bigInteger('monto_ajuste')->nullable();
             $table->unsignedSmallInteger('tipo_reajuste');
             $table->text('observacion')->nullable();
@@ -38,6 +40,9 @@ class CreateReajustesTable extends Migration
 
             $table->foreign('recarga_id')->references('id')->on('recargas')->onDelete('cascade');
             $table->unsignedBigInteger('recarga_id')->nullable();
+
+            $table->foreign('esquema_id')->references('id')->on('esquemas');
+            $table->unsignedBigInteger('esquema_id')->nullable();
 
             $table->foreign('user_created_by')->references('id')->on('users');
             $table->unsignedBigInteger('user_created_by')->nullable();

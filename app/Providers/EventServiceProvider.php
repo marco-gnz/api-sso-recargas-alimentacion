@@ -18,6 +18,15 @@ class EventServiceProvider extends ServiceProvider
         Registered::class => [
             SendEmailVerificationNotification::class,
         ],
+        'App\Events\CartolaEnviadaManual' => [
+            'App\Listeners\EnviarLinksCartola'
+        ],
+        'App\Events\CartolaEnviadaMasivo' => [
+            'App\Listeners\EnviarLinksCartolaMasivo'
+        ],
+        'Illuminate\Auth\Events\Login' => [
+            'App\Listeners\LogSuccessfulLogin',
+        ],
     ];
 
     /**

@@ -32,6 +32,18 @@ class FuncionarioRecargaResource extends JsonResource
         return $turnante;
     }
 
+    public function esVigente($funcionario)
+    {
+        $es_vigente     = false;
+        $query_results  = $funcionario->contratos()->where('recarga_id', $funcionario->recarga->id)->count();
+
+        if ($query_results > 0) {
+            $es_vigente = true;
+        }
+
+        return $es_vigente;
+    }
+
     public function toArray($request)
     {
         $es_turnante                 = $this->esTurnante($this);
@@ -51,15 +63,18 @@ class FuncionarioRecargaResource extends JsonResource
             'rut_completo'                  => $this->rut_completo,
             'nombre_completo'               => $this->nombre_completo,
             'apellidos'                     => $this->apellidos,
+            'dias_habiles'                  => $es_turnante ? $this->recarga->total_dias_mes_beneficio : $this->recarga->total_dias_laborales_beneficio,
             'turnos_count'                  => $this->turnos()->where('recarga_id', $this->recarga->id)->count(),
             'ausentismos_count'             => $this->ausentismos()->where('recarga_id', $this->recarga->id)->count(),
             'reajustes_count'               => $this->reajustes()->where('recarga_id', $this->recarga->id)->count(),
             'contratos_count'               => $this->contratos()->where('recarga_id', $this->recarga->id)->count(),
+            'contratos'                     => $this->contratos()->where('recarga_id', $this->recarga->id)->get(),
             'viaticos_count'                => $this->viaticos()->where('recarga_id', $this->recarga->id)->count(),
             'reajustes_total_days'          => $total_reajustes_days,
             'grupos_ausentismo'             => $grupos_all,
             'dias_libres'                   => $this->asistencias()->where('recarga_id', $this->recarga->id)->where('tipo_asistencia_turno_id', 3)->count(),
-            'es_turnante'                   => $es_turnante
+            'es_turnante'                   => $es_turnante,
+            'es_vigente'                    => true
         ];
     }
 }

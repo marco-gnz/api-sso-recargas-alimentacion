@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\RecargaResource;
 use App\Http\Resources\RecargaViaticosResource;
 use App\Models\Recarga;
 use Illuminate\Http\Request;
@@ -38,7 +39,15 @@ class RecargaViaticosController extends Controller
     {
         try {
             $input_query = $request->input;
-            $recarga     = Recarga::where('codigo', $codigo)->firstOrFail();
+            $recarga     = Recarga::where('codigo', $codigo)
+                ->withCount('users')
+                ->withCount('ausentismos')
+                ->withCount('asignaciones')
+                ->withCount('reajustes')
+                ->withCount('contratos')
+                ->withCount('viaticos')
+                ->withCount('esquemas')
+                ->firstOrFail();
 
             $viaticos = $recarga->viaticos()->input($input_query)->orderBy('valor_viatico', 'asc')->paginate(50);
 
@@ -55,7 +64,8 @@ class RecargaViaticosController extends Controller
                         'from'          => $viaticos->firstItem(),
                         'to'            => $viaticos->lastPage()
                     ],
-                    'viaticos' => RecargaViaticosResource::collection($viaticos)
+                    'recarga'   => RecargaResource::make($recarga),
+                    'viaticos'  => RecargaViaticosResource::collection($viaticos)
                 )
             );
         } catch (\Exception $error) {

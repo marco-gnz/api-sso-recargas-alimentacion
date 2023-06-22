@@ -15,4 +15,9 @@ class Establecimiento extends Model
         'sigla',
         'nombre'
     ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }

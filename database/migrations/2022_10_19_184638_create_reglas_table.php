@@ -15,9 +15,9 @@ class CreateReglasTable extends Migration
     {
         Schema::create('reglas', function (Blueprint $table) {
             $table->bigIncrements('id');
-            $table->time('hora_inicio')->nullable();
-            $table->time('hora_termino')->nullable();
             $table->boolean('active')->default(1);
+            $table->boolean('active_tipo_dias')->default(0);
+            $table->boolean('tipo_dias')->nullable();
             $table->boolean('turno_funcionario')->nullable(); //0=no turnante 1=turnante
 
             $table->foreign('grupo_id')->references('id')->on('grupo_ausentismos');

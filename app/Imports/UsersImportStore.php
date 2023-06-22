@@ -2,7 +2,10 @@
 
 namespace App\Imports;
 
+use App\Http\Controllers\Admin\Calculos\ActualizarEsquemaController;
+use App\Http\Controllers\Admin\Esquema\EsquemaController;
 use App\Models\Cargo;
+use App\Models\Esquema;
 use App\Models\Establecimiento;
 use App\Models\Hora;
 use App\Models\Ley;
@@ -17,6 +20,7 @@ use Maatwebsite\Excel\Concerns\WithValidation;
 use App\Rules\RutValidateRule;
 use App\Rules\TipeValueDateContrato;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
 class UsersImportStore implements ToModel, WithValidation, WithHeadingRow
@@ -62,7 +66,9 @@ class UsersImportStore implements ToModel, WithValidation, WithHeadingRow
     public function transformDate($value, $format = 'Y-m-d')
     {
         try {
-            return Carbon::instance(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($value));
+            if($value != $this->value_date_indefinido){
+                return Carbon::instance(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($value));
+            }
         } catch (\ErrorException $e) {
             return Carbon::createFromFormat($format, $value);
         }
@@ -77,33 +83,41 @@ class UsersImportStore implements ToModel, WithValidation, WithHeadingRow
             $unidad             = Unidad::where('cod_sirh', $row[strtolower($this->cod_unidad)])->firstOrFail();
             $planta             = Planta::where('nombre', $row[strtolower($this->nom_planta)])->firstOrFail();
             $cargo              = Cargo::where('cod_sirh', $row[strtolower($this->cod_cargo)])->firstOrFail();
-            $ley                = Ley::where('nombre', $row[strtolower($this->ley)])->firstOrFail();
+            $ley                = Ley::where('nombre', $row[strtolower($this->ley)])->orWhere('codigo', $row[strtolower($this->ley)])->firstOrFail();
             $horas              = Hora::where('nombre', $row[strtolower($this->horas)])->firstOrFail();
 
             $fecha_inicio       = Carbon::parse($this->transformDate($row[$this->fecha_inicio]));
             $fecha_termino      = $this->returnFechaTerminoContrato($row[$this->fecha_termino], $row[$this->fecha_alejamiento]);
-            $calculo            = $this->totalDiasEnPeriodo($fecha_inicio, $fecha_termino);
+            $calculo            = $this->totalDiasEnPeriodo($fecha_inicio, $fecha_termino->fecha);
 
             if ($user) {
                 $data_user = [
-                    'nombres'               => $row[strtolower($this->nombres)],
-                    'apellidos'             => $row[strtolower($this->apellidos)],
-                    'email'                 => $row[strtolower($this->email)] != null ? $row[strtolower($this->email)] : $user->email,
+                    'nombres'   => $row[strtolower($this->nombres)] !== $user->nombres ? $row[strtolower($this->nombres)] : $user->nombres,
+                    'apellidos' => $row[strtolower($this->apellidos)] !== $user->apellidos ? $row[strtolower($this->apellidos)] : $user->apellidos,
+                    'email'     => $row[strtolower($this->email)] !== null && $row[strtolower($this->email)] !== $user->email ? $row[strtolower($this->email)] : $user->email,
                 ];
+
                 $update = $user->update($data_user);
+
 
                 if ($update) {
                     $this->editados++;
                 }
 
+                $esquema_controller = new EsquemaController;
+                $esquema = $esquema_controller->returnEsquemaOrCreate($user->id, $this->recarga->id);
+
+                $fecha_inicio_periodo   = $calculo[4] != null ? Carbon::parse($calculo[4])->format('Y-m-d') : null;
+                $fecha_termino_periodo  = $calculo[5] != null ? Carbon::parse($calculo[5])->format('Y-m-d') : null;
+
                 $data_contrato = [
                     'fecha_inicio'                  => $calculo[1] != null ? Carbon::parse($calculo[1])->format('Y-m-d') : NULL,
                     'fecha_termino'                 => $row[$this->fecha_termino] != $this->value_date_indefinido ? Carbon::parse($calculo[2])->format('Y-m-d') : NULL,
-                    'fecha_inicio_periodo'          => $calculo[4] != null ? Carbon::parse($calculo[4])->format('Y-m-d') : NULL,
-                    'fecha_termino_periodo'         => $calculo[5] != null ? Carbon::parse($calculo[5])->format('Y-m-d') : NULL,
+                    'fecha_inicio_periodo'          => $fecha_inicio_periodo,
+                    'fecha_termino_periodo'         => $fecha_termino_periodo,
                     'total_dias_contrato'           => $row[$this->fecha_termino] != $this->value_date_indefinido ? $calculo[0] : NULL,
                     'total_dias_contrato_periodo'   => $calculo[3],
-                    'alejamiento'                   => $row[$this->fecha_termino] === $this->value_date_indefinido && $row[$this->fecha_alejamiento] != $this->value_date_indefinido ? true : false,
+                    'alejamiento'                   => $fecha_termino->fecha_alejamiento,
                     'user_id'                       => $user->id,
                     'establecimiento_id'            => $establecimiento->id,
                     'unidad_id'                     => $unidad->id,
@@ -111,15 +125,20 @@ class UsersImportStore implements ToModel, WithValidation, WithHeadingRow
                     'cargo_id'                      => $cargo->id,
                     'ley_id'                        => $ley->id,
                     'hora_id'                       => $horas->id,
-                    'recarga_id'                    => $this->recarga->id
+                    'recarga_id'                    => $this->recarga->id,
                 ];
 
                 $new_contrato = RecargaContrato::create($data_contrato);
 
+                if ($new_contrato) {
+                    $cartola_controller = new ActualizarEsquemaController;
+                    $cartola_controller->storeEsquema($user, $this->recarga, $new_contrato);
+                }
+
                 $recarga = $this->recarga;
                 $user_in_recarga = $recarga->whereHas('users', function ($query)  use ($user) {
                     $query->where('recarga_user.user_id', $user->id);
-                })->first();
+                })->where('active', true)->first();
 
                 if (!$user_in_recarga) {
                     $user->recargas()->attach($this->recarga->id);
@@ -135,17 +154,22 @@ class UsersImportStore implements ToModel, WithValidation, WithHeadingRow
                     'email'                 => $row[strtolower($this->email)],
                 ];
                 $user = User::create($data_user);
-
                 $user = $user->fresh();
+
+                $esquema_controller = new EsquemaController;
+                $esquema = $esquema_controller->returnEsquemaOrCreate($user->id, $this->recarga->id);
+
+                $fecha_inicio_periodo   = $calculo[4] != null ? Carbon::parse($calculo[4])->format('Y-m-d') : null;
+                $fecha_termino_periodo  = $calculo[5] != null ? Carbon::parse($calculo[5])->format('Y-m-d') : null;
 
                 $data_contrato = [
                     'fecha_inicio'                  => $calculo[1] != null ? Carbon::parse($calculo[1])->format('Y-m-d') : NULL,
                     'fecha_termino'                 => $row[$this->fecha_termino] != $this->value_date_indefinido ? Carbon::parse($calculo[2])->format('Y-m-d') : NULL,
-                    'fecha_inicio_periodo'          => $calculo[4] != null ? Carbon::parse($calculo[4])->format('Y-m-d') : NULL,
-                    'fecha_termino_periodo'         => $calculo[5] != null ? Carbon::parse($calculo[5])->format('Y-m-d') : NULL,
+                    'fecha_inicio_periodo'          => $fecha_inicio_periodo,
+                    'fecha_termino_periodo'         => $fecha_termino_periodo,
                     'total_dias_contrato'           => $row[$this->fecha_termino] != $this->value_date_indefinido ? $calculo[0] : NULL,
                     'total_dias_contrato_periodo'   => $calculo[3],
-                    'alejamiento'                   => $row[$this->fecha_termino] === $this->value_date_indefinido && $row[$this->fecha_alejamiento] != $this->value_date_indefinido ? true : false,
+                    'alejamiento'                   => $fecha_termino->fecha_alejamiento,
                     'user_id'                       => $user->id,
                     'establecimiento_id'            => $establecimiento->id,
                     'unidad_id'                     => $unidad->id,
@@ -153,16 +177,21 @@ class UsersImportStore implements ToModel, WithValidation, WithHeadingRow
                     'cargo_id'                      => $cargo->id,
                     'ley_id'                        => $ley->id,
                     'hora_id'                       => $horas->id,
-                    'recarga_id'                    => $this->recarga->id
+                    'recarga_id'                    => $this->recarga->id,
                 ];
 
                 $new_contrato = RecargaContrato::create($data_contrato);
+
+                if ($new_contrato) {
+                    $cartola_controller = new ActualizarEsquemaController;
+                    $cartola_controller->storeEsquema($user, $this->recarga, $new_contrato);
+                }
 
                 if ($user) {
                     $recarga = $this->recarga;
                     $user_in_recarga = $recarga->whereHas('users', function ($query)  use ($user) {
                         $query->where('recarga_user.user_id', $user->id);
-                    })->first();
+                    })->where('active', true)->first();
 
                     if (!$user_in_recarga) {
                         $user->recargas()->attach($this->recarga->id);
@@ -233,25 +262,44 @@ class UsersImportStore implements ToModel, WithValidation, WithHeadingRow
         }
     }
 
-    public function returnFechaTerminoContrato($fecha_termino, $fecha_alejamiento)
-    {
-        $fecha = null;
-        switch ($fecha_termino) {
-            case ($fecha_termino != $this->value_date_indefinido && $fecha_alejamiento === $this->value_date_indefinido):
-                $fecha       = Carbon::parse($this->transformDate($fecha_termino));
-                break;
+    public function returnFechaTerminoContrato($fecha_termino, $fecha_termino_alejamiento)
+{
+    $tz = 'America/Santiago';
+    $fecha_recarga_inicio = Carbon::createFromDate($this->recarga->anio_beneficio, $this->recarga->mes_beneficio, '01', $tz);
+    $fecha_recarga_termino = $fecha_recarga_inicio->endOfMonth();
 
-            case ($fecha_termino === $this->value_date_indefinido && $fecha_alejamiento != $this->value_date_indefinido):
-                $fecha       = Carbon::parse($this->transformDate($fecha_alejamiento));
-                break;
-            default:
-                $tz                     = 'America/Santiago';
-                $fecha_recarga_termino  = Carbon::createFromDate($this->recarga->anio_beneficio, $this->recarga->mes_beneficio, '01', $tz);
-                $fecha                  = $fecha_recarga_termino->endOfMonth();
-                break;
+    $fecha = null;
+    $fecha_alejamiento = false;
+
+    // Validar fecha de término
+    if ($fecha_termino !== null && $fecha_termino !== $this->value_date_indefinido) {
+        $fecha_termino_val = Carbon::parse($this->transformDate($fecha_termino));
+
+        if ($fecha_termino_val->format('Y-m-d') <= $fecha_recarga_termino->format('Y-m-d')) {
+            $fecha = $fecha_termino_val->format('Y-m-d');
+        } else {
+            $fecha = $fecha_recarga_termino->format('Y-m-d');
         }
-        return $fecha;
     }
+
+    // Validar fecha de término de alejamiento
+    if ($fecha_termino_alejamiento !== null && $fecha_termino_alejamiento !== $this->value_date_indefinido) {
+        $fecha_termino_alejamiento_val = Carbon::parse($this->transformDate($fecha_termino_alejamiento));
+
+        if ($fecha_termino_alejamiento_val->format('Y-m-d') <= $fecha_recarga_termino->format('Y-m-d')) {
+            $fecha = $fecha_termino_alejamiento_val->format('Y-m-d');
+            $fecha_alejamiento = true;
+        }
+    }
+
+    $response = (object) [
+        'fecha' => $fecha,
+        'fecha_alejamiento' => $fecha_alejamiento,
+    ];
+
+    return $response;
+}
+
 
     public function validateRut($value)
     {
@@ -341,7 +389,7 @@ class UsersImportStore implements ToModel, WithValidation, WithHeadingRow
 
                 $fecha_inicio        = Carbon::parse($this->transformDate($data[$this->fecha_inicio]));
                 $fecha_termino       = $this->returnFechaTerminoContrato($data[$this->fecha_termino], $data[$this->fecha_alejamiento]);
-                $calculo             = $this->totalDiasEnPeriodo($fecha_inicio, $fecha_termino);
+                $calculo             = $this->totalDiasEnPeriodo($fecha_inicio, $fecha_termino->fecha);
 
                 $fecha_inicio_real          = $calculo[4] ? Carbon::parse($calculo[4])->format('Y-m-d') : null;
                 $fecha_termino_real         = $calculo[5] ? Carbon::parse($calculo[5])->format('Y-m-d') : null;
@@ -405,7 +453,18 @@ class UsersImportStore implements ToModel, WithValidation, WithHeadingRow
             ],
             $this->ley => [
                 'required',
-                'exists:leys,nombre'
+                function ($attribute, $value, $fail) {
+                    $exists = DB::table('leys')
+                        ->where(function ($query) use ($value) {
+                            $query->where('nombre', $value)
+                                  ->orWhere('codigo', $value);
+                        })
+                        ->exists();
+
+                    if (!$exists) {
+                        $fail("El valor proporcionado en $attribute no existe en la tabla 'leys'.");
+                    }
+                },
             ],
             $this->horas => [
                 'required',

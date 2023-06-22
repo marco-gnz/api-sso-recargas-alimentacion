@@ -24,6 +24,7 @@ class CreateAusentismosTable extends Migration
             $table->decimal('total_dias_ausentismo', 6, 1)->nullable();
             $table->decimal('total_dias_ausentismo_periodo', 6, 1)->nullable();
             $table->decimal('total_dias_habiles_ausentismo_periodo', 6, 1)->nullable();
+            $table->decimal('total_dias_habiles_ausentismo_periodo_meridiano', 6, 1)->nullable();
             $table->time('hora_inicio')->nullable();
             $table->time('hora_termino')->nullable();
             $table->decimal('total_horas_ausentismo', 6, 1)->nullable();

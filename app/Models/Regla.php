@@ -11,10 +11,10 @@ class Regla extends Model
     protected $primaryKey = 'id';
 
     protected $fillable = [
-        'hora_inicio',
-        'hora_termino',
         'active',
         'turno_funcionario',
+        'active_tipo_dias',
+        'tipo_dias',
         'grupo_id',
         'recarga_id',
         'tipo_ausentismo_id'
@@ -37,11 +37,26 @@ class Regla extends Model
 
     public function meridianos()
     {
-        return $this->belongsToMany(Meridiano::class);
+        return $this->belongsToMany(Meridiano::class)->withPivot('active');
     }
 
     public function ausentismos()
     {
         return $this->hasMany(Ausentismo::class);
+    }
+
+    public function horarios()
+    {
+        return $this->hasMany(ReglaHorario::class);
+    }
+
+    protected static function booted()
+    {
+        static::updated(function ($regla) {
+            $regla->ausentismos->each(function ($ausentismo) use ($regla) {
+                $ausentismo->grupo_id = $regla->grupo_id;
+                $ausentismo->save();
+            });
+        });
     }
 }

@@ -15,10 +15,7 @@ class FuncionarioViaticosResource extends JsonResource
      */
     public function toArray($request)
     {
-        $feriados_count             = $this->recarga->feriados()->where('active', true)->whereBetween('fecha', [$this->fecha_inicio_periodo, $this->fecha_termino_periodo])->count();
         $valor_viatico              = $this->valor_viatico != null ? number_format($this->valor_viatico, 0, ",", ".") : null;
-        $total_dias_habiles_periodo = ($this->total_dias_habiles_periodo - $feriados_count);
-
         return [
             'uuid'                      => $this->uuid,
             'fecha_inicio'              => $this->fecha_inicio ? Carbon::parse($this->fecha_inicio)->format('d-m-Y') : NULL,
@@ -26,7 +23,7 @@ class FuncionarioViaticosResource extends JsonResource
             'total_dias'                => $this->total_dias ? $this->total_dias : NULL,
             'fecha_inicio_periodo'      => $this->fecha_inicio_periodo ? Carbon::parse($this->fecha_inicio_periodo)->format('d-m-Y') : NULL,
             'fecha_termino_periodo'     => $this->fecha_termino_periodo ? Carbon::parse($this->fecha_termino_periodo)->format('d-m-Y') : NULL,
-            'total_dias_habiles_periodo'=> $total_dias_habiles_periodo,
+            'total_dias_habiles_periodo'=> $this->total_dias_habiles_periodo,
             'jornada'                   => $this->jornada ? $this->jornada : NULL,
             'tipo_resolucion'           => $this->tipo_resolucion ? $this->tipo_resolucion : NULL,
             'n_resolucion'              => $this->n_resolucion ? $this->n_resolucion : NULL,

@@ -20,6 +20,7 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use App\Rules\RutValidateRule;
 use App\Rules\TipeValueDateContrato;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\ToArray;
 use Illuminate\Support\Facades\Validator;
 
@@ -31,20 +32,20 @@ class UsersImport implements WithValidation, ToCollection, WithHeadingRow
         $this->columnas             = $columnas;
         $this->row_columnas         = $row_columnas;
 
-        $this->rut                  = strtolower($this->columnas[0]);
-        $this->dv                   = strtolower($this->columnas[1]);
-        $this->nombres              = strtolower($this->columnas[2]);
-        $this->apellidos            = strtolower($this->columnas[3]);
-        $this->email                = strtolower($this->columnas[4]);
-        $this->cod_establecimietno  = strtolower($this->columnas[5]);
-        $this->cod_unidad           = strtolower($this->columnas[6]);
-        $this->nom_planta           = strtolower($this->columnas[7]);
-        $this->cod_cargo            = strtolower($this->columnas[8]);
-        $this->ley                  = strtolower($this->columnas[9]);
-        $this->horas                = strtolower($this->columnas[10]);
-        $this->fecha_inicio         = strtolower($this->columnas[11]);
-        $this->fecha_termino        = strtolower($this->columnas[12]);
-        $this->fecha_alejamiento    = strtolower($this->columnas[13]);
+        $this->rut                  = $this->columnas[0];
+        $this->dv                   = $this->columnas[1];
+        $this->nombres              = $this->columnas[2];
+        $this->apellidos            = $this->columnas[3];
+        $this->email                = $this->columnas[4];
+        $this->cod_establecimietno  = $this->columnas[5];
+        $this->cod_unidad           = $this->columnas[6];
+        $this->nom_planta           = $this->columnas[7];
+        $this->cod_cargo            = $this->columnas[8];
+        $this->ley                  = $this->columnas[9];
+        $this->horas                = $this->columnas[10];
+        $this->fecha_inicio         = $this->columnas[11];
+        $this->fecha_termino        = $this->columnas[12];
+        $this->fecha_alejamiento    = $this->columnas[13];
     }
 
     public $data;
@@ -153,7 +154,7 @@ class UsersImport implements WithValidation, ToCollection, WithHeadingRow
                     $unidad             = Unidad::where('cod_sirh', $row[strtolower($this->cod_unidad)])->firstOrFail();
                     $planta             = Planta::where('nombre', $row[strtolower($this->nom_planta)])->firstOrFail();
                     $cargo              = Cargo::where('cod_sirh', $row[strtolower($this->cod_cargo)])->firstOrFail();
-                    $ley                = Ley::where('nombre', $row[strtolower($this->ley)])->firstOrFail();
+                    $ley                = Ley::where('nombre', $row[strtolower($this->ley)])->orWhere('codigo', $row[strtolower($this->ley)])->firstOrFail();
                     $horas              = Hora::where('nombre', $row[strtolower($this->horas)])->firstOrFail();
                     $fecha_inicio       = Carbon::parse($this->transformDate($row[$this->fecha_inicio]));
                     $fecha_termino      = $this->returnFechaTerminoContrato($row[$this->fecha_termino], $row[$this->fecha_alejamiento]);
@@ -355,7 +356,18 @@ class UsersImport implements WithValidation, ToCollection, WithHeadingRow
             ],
             $this->ley => [
                 'required',
-                'exists:leys,nombre'
+                function ($attribute, $value, $fail) {
+                    $exists = DB::table('leys')
+                        ->where(function ($query) use ($value) {
+                            $query->where('nombre', $value)
+                                  ->orWhere('codigo', $value);
+                        })
+                        ->exists();
+
+                    if (!$exists) {
+                        $fail("El valor proporcionado en $attribute no existe en la tabla 'leys'.");
+                    }
+                },
             ],
             $this->horas => [
                 'required',

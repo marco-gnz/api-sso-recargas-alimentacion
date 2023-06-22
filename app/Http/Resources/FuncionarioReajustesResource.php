@@ -28,18 +28,20 @@ class FuncionarioReajustesResource extends JsonResource
             'fecha_inicio'          => $fecha_inicio,
             'fecha_termino'         => $fecha_termino,
             'dias_periodo'          => $this->dias_periodo,
-            'dias'                  => $this->dias,
-            'status'                => $this->latestStatus->status,
+            'dias_periodo_habiles'  => $this->dias_periodo_habiles,
+            'total_dias'            => $this->total_dias,
+            'status'                => $this->last_status,
             'incremento'            => $this->incremento ? true : false,
             'incremento_nombre'     => $this->incremento ? 'Incremento' : 'Rebaja',
             'tipo_reajuste'         => $this->tipo_reajuste,
             'tipo_reajuste_nombre'  => Reajuste::TYPE_NOM[$this->tipo_reajuste],
-            'status_nombre'         => ReajusteEstado::STATUS_NOM[$this->latestStatus->status],
+            'status_nombre'         => ReajusteEstado::STATUS_NOM[$this->last_status],
             'valor_dia'             => $valor_dia != null ? "$"."{$valor_dia}" : null,
             'monto_ajuste'          => $monto_ajuste != null ? "$"."{$monto_ajuste}" : null,
             'tipo_ausentismo'       => $this->tipoAusentismo != null ? $this->tipoAusentismo->sigla : null,
             'tipo_incremento'       => $this->tipoIncremento != null ? $this->tipoIncremento->sigla : null,
-            'observacion'           => $this->observacion
+            'observacion'           => $this->observacion,
+            'alertas'               => AlertasReajuste::collection($this->alertas)
         ];
     }
 }

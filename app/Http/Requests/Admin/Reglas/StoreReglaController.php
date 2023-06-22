@@ -36,14 +36,24 @@ class StoreReglaController extends FormRequest
 
             'reglas.*.active'                           => 'required_if:reglas.*.grupo_id,2,3',
 
+            'reglas.*.active_tipo_dias_turnante'        => 'nullable',
+            'reglas.*.tipo_dias_turnante'               => 'required_if:reglas.*.active_tipo_dias_turnante,1',
+
+            'reglas.*.active_tipo_dias_no_turnante'     => 'nullable',
+            'reglas.*.tipo_dias_no_turnante'            => 'required_if:reglas.*.active_tipo_dias_no_turnante,1',
+
             'reglas.*.meridiano_turnante'               => 'array|required_if:reglas.*.grupo_id,2',
             'reglas.*.meridiano_no_turnante'            => 'array|required_if:reglas.*.grupo_id,2',
 
-            'reglas.*.hora_inicio_turnante'             => 'required_if:reglas.*.grupo_id,3',
-            'reglas.*.hora_termino_turnante'            => 'required_if:reglas.*.grupo_id,3 ',
+            'reglas.*.hora_inicio_turnante_am'          => 'required_if:reglas.*.grupo_id,3',
+            'reglas.*.hora_termino_turnante_am'         => 'required_if:reglas.*.grupo_id,3 ',
+            'reglas.*.hora_inicio_turnante_pm'          => 'required_if:reglas.*.grupo_id,3',
+            'reglas.*.hora_termino_turnante_pm'         => 'required_if:reglas.*.grupo_id,3 ',
 
-            'reglas.*.hora_inicio_no_turnante'          => 'required_if:reglas.*.grupo_id,3',
-            'reglas.*.hora_termino_no_turnante'         => 'required_if:reglas.*.grupo_id,3 '
+            'reglas.*.hora_inicio_no_turnante_am'       => 'required_if:reglas.*.grupo_id,3',
+            'reglas.*.hora_termino_no_turnante_am'      => 'required_if:reglas.*.grupo_id,3 ',
+            'reglas.*.hora_inicio_no_turnante_pm'       => 'required_if:reglas.*.grupo_id,3',
+            'reglas.*.hora_termino_no_turnante_pm'      => 'required_if:reglas.*.grupo_id,3 '
         ];
     }
 
@@ -60,14 +70,21 @@ class StoreReglaController extends FormRequest
 
             'reglas.*.active.required_if'                       => 'La :attribute es obligatoria',
 
+            'reglas.*.tipo_dias_turnante.required_if'           => 'El :attribute es obligatorio',
+            'reglas.*.tipo_dias_no_turnante.required_if'        => 'El :attribute es obligatorio',
+
             'reglas.*.meridiano_turnante.required_if'           => 'El :attribute es obligatorio',
             'reglas.*.meridiano_no_turnante.required_if'        => 'El :attribute es obligatorio',
 
-            'reglas.*.hora_inicio_turnante.required_if'         => 'La :attribute es obligatoria',
-            'reglas.*.hora_termino_turnante.required_if'        => 'La :attribute es obligatoria',
+            'reglas.*.hora_inicio_turnante_am.required_if'         => 'La :attribute es obligatoria',
+            'reglas.*.hora_termino_turnante_am.required_if'        => 'La :attribute es obligatoria',
+            'reglas.*.hora_inicio_turnante_pm.required_if'         => 'La :attribute es obligatoria',
+            'reglas.*.hora_termino_turnante_pm.required_if'        => 'La :attribute es obligatoria',
 
-            'reglas.*.hora_inicio_no_turnante.required_if'      => 'La :attribute es obligatoria',
-            'reglas.*.hora_termino_no_turnante.required_if'     => 'La :attribute es obligatoria',
+            'reglas.*.hora_inicio_no_turnante_am.required_if'      => 'La :attribute es obligatoria',
+            'reglas.*.hora_termino_no_turnante_am.required_if'     => 'La :attribute es obligatoria',
+            'reglas.*.hora_inicio_no_turnante_pm.required_if'      => 'La :attribute es obligatoria',
+            'reglas.*.hora_termino_no_turnante_pm.required_if'     => 'La :attribute es obligatoria',
         ];
     }
 
@@ -79,12 +96,20 @@ class StoreReglaController extends FormRequest
             'reglas.*.grupo_id'                 => 'grupo',
             'reglas.*.turno'                    => 'turno',
             'reglas.*.active'                   => 'regla',
+            'reglas.*.tipo_dias_turnante'       => 'tipo de días',
+            'reglas.*.tipo_dias_no_turnante'    => 'tipo de días',
             'reglas.*.meridiano_turnante'       => 'meridiano T',
             'reglas.*.meridiano_no_turnante'    => 'meridiano NT',
-            'reglas.*.hora_inicio_turnante'     => 'hora inicio T',
-            'reglas.*.hora_termino_turnante'    => 'hora término T',
-            'reglas.*.hora_inicio_no_turnante'  => 'hora inicio NT',
-            'reglas.*.hora_termino_no_turnante' => 'hora término NT',
+
+            'reglas.*.hora_inicio_turnante_am'     => 'hora inicio T am',
+            'reglas.*.hora_termino_turnante_am'    => 'hora término T am',
+            'reglas.*.hora_inicio_turnante_pm'     => 'hora inicio T pm',
+            'reglas.*.hora_termino_turnante_pm'    => 'hora término T pm',
+
+            'reglas.*.hora_inicio_no_turnante_am'     => 'hora inicio NT am',
+            'reglas.*.hora_termino_no_turnante_am'    => 'hora término NT am',
+            'reglas.*.hora_inicio_no_turnante_pm'     => 'hora inicio NT pm',
+            'reglas.*.hora_termino_no_turnante_pm'    => 'hora término NT pm',
         ];
     }
 }

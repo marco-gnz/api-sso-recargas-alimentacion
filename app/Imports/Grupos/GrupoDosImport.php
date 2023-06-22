@@ -3,6 +3,7 @@
 namespace App\Imports\Grupos;
 
 use App\Models\Ausentismo;
+use App\Models\Esquema;
 use App\Models\Establecimiento;
 use App\Models\Meridiano;
 use App\Models\Regla;
@@ -20,6 +21,7 @@ use App\Rules\RutValidateRule;
 use Carbon\Carbon;
 use Maatwebsite\Excel\Concerns\ToArray;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
 
 class GrupoDosImport implements ToCollection, WithHeadingRow, WithValidation
 {
@@ -40,6 +42,7 @@ class GrupoDosImport implements ToCollection, WithHeadingRow, WithValidation
     }
 
     public $data;
+    public $data_sobrante;
 
     public function headingRow(): int
     {
@@ -55,61 +58,106 @@ class GrupoDosImport implements ToCollection, WithHeadingRow, WithValidation
         }
     }
 
+    public function isDecimal($n)
+    {
+        return is_numeric($n) && floor($n) != $n;
+    }
+
     public function collection(Collection $rows)
     {
         try {
             $ausentismos = [];
+            $ausentismos_sobrante = [];
             if (count($rows) > 0) {
                 foreach ($rows as $row) {
                     $rut                = "{$row[$this->rut]}-{$row[$this->dv]}";
                     $funcionario        = User::where('rut', $rut)->first();
                     $tipo_ausentismo    = TipoAusentismo::where('nombre', $row[$this->nombre_tipo_ausentismo])->first();
-                    $meridiano          = Meridiano::where('codigo', $row[$this->meridiano])->first();
+                    $meridiano          = Meridiano::where('codigo', $row[$this->meridiano])->orWhere('nombre', $row[$this->meridiano])->first();
 
                     if ($funcionario && $tipo_ausentismo && $meridiano) {
-                        $turnante       = $this->esTurnante($funcionario);
-                        $regla          = Regla::where('tipo_ausentismo_id', $tipo_ausentismo->id)->first();
+                        $esquema    = $funcionario->esquemas()->where('recarga_id', $this->recarga->id)->first();
+                        $turnante   = $esquema ? ($esquema->es_turnante != 2 ? true : false) : false;
+                        $regla      = $this->recarga->reglas()
+                            ->where('turno_funcionario', $turnante)
+                            ->where('grupo_id', 2)
+                            ->where('tipo_ausentismo_id', $tipo_ausentismo->id)
+                            ->whereHas('meridianos', function ($query) use ($meridiano) {
+                                $query->where('meridiano_regla.meridiano_id', $meridiano->id)
+                                    ->where('meridiano_regla.active', true);
+                            })
+                            ->first();
 
                         $fecha_inicio   = Carbon::parse($this->transformDate($row[$this->fecha_inicio]));
                         $fecha_termino  = Carbon::parse($this->transformDate($row[$this->fecha_termino]));
-                        /* $dias           = $this->totalDiasEnPeriodo($fecha_inicio->format('d-m-Y'), $fecha_termino->format('d-m-Y')); */
+
+                        $total_dias_ausentismo  = $row[$this->total_ausentismo];
+
+                        if ($total_dias_ausentismo) {
+                            $is_decimal = $this->isDecimal($total_dias_ausentismo);
+                            if ($is_decimal) {
+                                $total_dias_ausentismo = number_format($total_dias_ausentismo, 2, '.', '');
+                            }
+                        }
 
                         $data = [
                             'nombres'                   => $funcionario->nombre_completo,
-                            'turnante'                  => $turnante ? 'Si' : 'No',
+                            'turno'                     => $esquema ? Esquema::TURNANTE_NOM[$esquema->es_turnante] : '--',
                             'nombre_tipo_ausentismo'    => $tipo_ausentismo->nombre,
-                            'grupo'                     => $regla->grupoAusentismo->nombre,
                             'fecha_inicio'              => $fecha_inicio->format('d-m-Y'),
                             'fecha_termino'             => $fecha_termino->format('d-m-Y'),
-                            'total_ausentismo'          => (string)$row[$this->total_ausentismo],
-                            'meridiano'                 => $meridiano->nombre
+                            'meridiano'                 => $meridiano->codigo,
+                            'descuento'                 => $regla ? 'Si' : 'No'
                         ];
                         array_push($ausentismos, $data);
                     }
                 }
                 $this->data = $ausentismos;
+                $this->data_sobrante = $ausentismos_sobrante;
             }
         } catch (\Exception $error) {
+            Log::info($error->getMessage());
             return $error->getMessage();
         }
     }
 
-    public function esTurnante($funcionario)
+    private function descuentoAusentismo($esquema, $tipo_ausentismo, $meridiano)
     {
-        $turnante = false;
+        $descuento = false;
 
-        $turno      = $funcionario->turnos()->where('recarga_id', $this->recarga->id)->where('es_turnante', true)->first();
-        $asistencia = $funcionario->asistencias()->where('recarga_id', $this->recarga->id)->first();
+        if ($esquema) {
+            $es_turnante = $esquema->es_turnante === 2 ? false : true;
 
-        if (($turno) && ($turno->es_turnante && $asistencia)) {
-            $turnante = true;
-        } else if ($asistencia && !$turno) {
-            $turnante = true;
-        } else if ($turno && !$asistencia) {
-            $turnante = null;
+            $regla = Regla::where('tipo_ausentismo_id', $tipo_ausentismo->id)
+                ->where('recarga_id', $this->recarga->id)
+                ->where('turno_funcionario', $es_turnante)
+                ->whereHas('meridianos', function ($query) use ($meridiano) {
+                    $query->where('meridiano_regla.meridiano_id', $meridiano->id)
+                        ->where('meridiano_regla.active', true);
+                })
+                ->count();
+
+            if ($regla > 0) {
+                $descuento = true;
+            }
         }
 
-        return $turnante;
+        return $descuento;
+    }
+
+    public function esTurnante($funcionario)
+    {
+        $es_turnante = false;
+
+        $total_turnos                   = $funcionario->turnos()->where('recarga_id', $this->recarga->id)->where('es_turnante', true)->count();
+        $total_asistencias              = $funcionario->asistencias()->where('recarga_id', $this->recarga->id)->count();
+        $total_dias_contrato_periodo    = $funcionario->contratos()->where('recarga_id', $this->recarga->id)->count();
+
+        if (($total_turnos > 0 && $total_asistencias > 0 && $total_dias_contrato_periodo > 0) || ($total_asistencias > 0 && $total_dias_contrato_periodo > 0)) {
+            $es_turnante = true;
+        }
+
+        return $es_turnante;
     }
 
     public function validateRut($value)
@@ -149,23 +197,27 @@ class GrupoDosImport implements ToCollection, WithHeadingRow, WithValidation
         $regla   = null;
 
         $tipo_ausentismo    = TipoAusentismo::where('nombre', $nombre_tipo_ausentismo)->first();
-        $meridiano          = Meridiano::where('codigo', $meridiano_row)->first();
-        $funcionario        = User::where('rut', $rut)->first();
+        $meridiano          = Meridiano::where('codigo', $meridiano_row)->orWhere('nombre', $meridiano_row)->first();
+        $funcionario        = User::where('rut', $rut)->with('turnos', 'asistencias', 'contratos')->first();
 
-        $turnante           = $this->esTurnante($funcionario);
-        $turnante_message   = $turnante ? 'TURNANTE' : 'NO TURNANTE';
-        if ($meridiano) {
-            $regla = Regla::where('tipo_ausentismo_id', $tipo_ausentismo->id)
-                ->where('turno_funcionario', $turnante)
-                ->whereHas('meridianos', function ($query) use ($meridiano) {
-                    $query->where('meridiano_regla.meridiano_id', $meridiano->id);
-                })
-                ->first();
-            if (!$regla) {
-                $existe     = false;
-                $message    = "Meridiano {$meridiano->nombre} no existe en regla de {$turnante_message}";
+        if ($funcionario && $meridiano && $tipo_ausentismo) {
+            $turnante           = $this->esTurnante($funcionario);
+            $turnante_message   = $turnante ? 'TURNANTE' : 'NO TURNANTE';
+            if ($meridiano) {
+                $regla = Regla::where('tipo_ausentismo_id', $tipo_ausentismo->id)
+                    ->where('recarga_id', $this->recarga->id)
+                    ->where('turno_funcionario', $turnante)
+                    ->whereHas('meridianos', function ($query) use ($meridiano) {
+                        $query->where('meridiano_regla.meridiano_id', $meridiano->id);
+                    })
+                    ->first();
+                if (!$regla) {
+                    $existe     = false;
+                    $message    = "Meridiano {$meridiano->nombre} no existe en regla de {$turnante_message}";
+                }
             }
         }
+
         return array($existe, $message);
     }
 
@@ -176,7 +228,7 @@ class GrupoDosImport implements ToCollection, WithHeadingRow, WithValidation
         $tipo_ausentismo = TipoAusentismo::where('nombre', $nombre_tipo_ausentismo)->first();
 
         if ($tipo_ausentismo) {
-            $regla = Regla::where('tipo_ausentismo_id', $tipo_ausentismo->id)->where('grupo_id', 2)->first();
+            $regla = Regla::where('tipo_ausentismo_id', $tipo_ausentismo->id)->where('grupo_id', 2)->where('recarga_id', $this->recarga->id)->first();
 
             if ($regla) {
                 $exist = true;
@@ -185,7 +237,7 @@ class GrupoDosImport implements ToCollection, WithHeadingRow, WithValidation
         return $exist;
     }
 
-    public function validateFechasAusentismos($rut_completo, $tipo_ausentismo, $fecha_inicio, $fecha_termino)
+    public function validateFechasAusentismos($rut_completo, $tipo_ausentismo, $fecha_inicio, $fecha_termino, $meridiano_row)
     {
         $tiene                  = false;
         $newformat_fecha_ini    = Carbon::parse($fecha_inicio)->format('Y-m-d');
@@ -193,13 +245,15 @@ class GrupoDosImport implements ToCollection, WithHeadingRow, WithValidation
 
         $funcionario            = User::where('rut_completo', $rut_completo)->first();
         $tipo_ausentismo        = TipoAusentismo::where('nombre', $tipo_ausentismo)->first();
+        $meridiano              = Meridiano::where('codigo', $meridiano_row)->orWhere('nombre', $meridiano_row)->first();
 
-        if ($funcionario && $tipo_ausentismo) {
+        if ($funcionario && $tipo_ausentismo && $meridiano) {
             $validacion_1 = Ausentismo::where('recarga_id', $this->recarga->id)
                 ->where('user_id', $funcionario->id)
-                /* ->where('tipo_ausentismo_id', $tipo_ausentismo->id) */
+                ->where('tipo_ausentismo_id', $tipo_ausentismo->id)
                 ->where('fecha_inicio', '<=', $newformat_fecha_ini)
                 ->where('fecha_termino', '>=', $newformat_fecha_ini)
+                ->where('meridiano_id', $meridiano->id)
                 ->where(function ($query) {
                     $query->whereHas('recarga', function ($query) {
                         $query->where('active', true);
@@ -212,9 +266,10 @@ class GrupoDosImport implements ToCollection, WithHeadingRow, WithValidation
 
             $validacion_2 = Ausentismo::where('recarga_id', $this->recarga->id)
                 ->where('user_id', $funcionario->id)
-                /* ->where('tipo_ausentismo_id', $tipo_ausentismo->id) */
+                ->where('tipo_ausentismo_id', $tipo_ausentismo->id)
                 ->where('fecha_inicio', '<=', $newformat_fecha_fin)
                 ->where('fecha_termino', '>=', $newformat_fecha_fin)
+                ->where('meridiano_id', $meridiano->id)
                 ->where(function ($query) {
                     $query->whereHas('recarga', function ($query) {
                         $query->where('active', true);
@@ -227,9 +282,10 @@ class GrupoDosImport implements ToCollection, WithHeadingRow, WithValidation
 
             $validacion_3 = Ausentismo::where('recarga_id', $this->recarga->id)
                 ->where('user_id', $funcionario->id)
-                /* ->where('tipo_ausentismo_id', $tipo_ausentismo->id) */
+                ->where('tipo_ausentismo_id', $tipo_ausentismo->id)
                 ->where('fecha_inicio', '>=', $newformat_fecha_ini)
                 ->where('fecha_termino', '<=', $newformat_fecha_fin)
+                ->where('meridiano_id', $meridiano->id)
                 ->where(function ($query) {
                     $query->whereHas('recarga', function ($query) {
                         $query->where('active', true);
@@ -252,7 +308,7 @@ class GrupoDosImport implements ToCollection, WithHeadingRow, WithValidation
 
         $funcionario        = User::where('rut_completo', $rut_completo)->first();
         $tipo_ausentismo    = TipoAusentismo::where('nombre', $tipo_ausentismo)->first();
-        $meridiano          = Meridiano::where('codigo', $nombre_meridiano)->first();
+        $meridiano          = Meridiano::where('codigo', $nombre_meridiano)->orWhere('nombre', $nombre_meridiano)->first();
 
         if ($funcionario && $tipo_ausentismo && $meridiano) {
             $validacion = Ausentismo::where('recarga_id', $this->recarga->id)
@@ -275,25 +331,102 @@ class GrupoDosImport implements ToCollection, WithHeadingRow, WithValidation
         return $tiene;
     }
 
+    public function totalDiasEnPeriodo($fecha_inicio, $fecha_termino)
+    {
+        try {
+            $new_fecha_inicio   = Carbon::parse($fecha_inicio);
+            $new_fecha_termino  = Carbon::parse($fecha_termino);
+
+            $new_fecha_inicio   = $new_fecha_inicio->format('Y-m-d');
+            $new_fecha_termino  = $new_fecha_termino->format('Y-m-d');
+
+            $tz                     = 'America/Santiago';
+            $fecha_recarga_inicio   = Carbon::createFromDate($this->recarga->anio_calculo, $this->recarga->mes_calculo, '01', $tz);
+            $fecha_recarga_termino  = Carbon::createFromDate($this->recarga->anio_calculo, $this->recarga->mes_calculo, '01', $tz);
+            $fecha_recarga_termino  = $fecha_recarga_termino->endOfMonth();
+            $fecha_recarga_inicio   = $fecha_recarga_inicio->format('Y-m-d');
+            $fecha_recarga_termino  = $fecha_recarga_termino->format('Y-m-d');
+
+            switch ($this->recarga) {
+                case (($new_fecha_inicio >= $fecha_recarga_inicio) && ($new_fecha_termino <= $fecha_recarga_termino)):
+                    $inicio             = Carbon::parse($new_fecha_inicio);
+                    $termino            = Carbon::parse($new_fecha_termino);
+                    break;
+
+                case (($new_fecha_inicio >= $fecha_recarga_inicio) && ($new_fecha_termino > $fecha_recarga_termino)):
+                    $inicio             = Carbon::parse($new_fecha_inicio);
+                    $termino            = Carbon::parse($fecha_recarga_termino);
+                    break;
+
+                case (($new_fecha_inicio < $fecha_recarga_inicio) && ($new_fecha_termino <= $fecha_recarga_termino)):
+                    $inicio             = Carbon::parse($fecha_recarga_inicio);
+                    $termino            = Carbon::parse($new_fecha_termino);
+                    break;
+
+                case (($new_fecha_inicio < $fecha_recarga_inicio) && ($new_fecha_termino > $fecha_recarga_termino)):
+                    $inicio             = Carbon::parse($fecha_recarga_inicio);
+                    $termino            = Carbon::parse($fecha_recarga_termino);
+                    break;
+
+                default:
+                    $dias_periodo = 'error';
+                    break;
+            }
+            return array($inicio, $termino);
+        } catch (\Exception $error) {
+            return $error->getMessage();
+        }
+    }
+
+    public function periodoInRecarga($fecha_inicio, $fecha_termino)
+    {
+        $in_recarga = true;
+
+        $new_fecha_inicio       = Carbon::parse($fecha_inicio)->format('Y-m');
+        $new_fecha_termino      = Carbon::parse($fecha_termino)->format('Y-m');
+
+        $tz                     = 'America/Santiago';
+        $fecha_recarga_inicio   = Carbon::createFromDate($this->recarga->anio_calculo, $this->recarga->mes_calculo, '01', $tz)->format('Y-m');
+        $fecha_recarga_termino  = Carbon::createFromDate($this->recarga->anio_calculo, $this->recarga->mes_calculo, '01', $tz);
+        $fecha_recarga_termino  = $fecha_recarga_termino->endOfMonth()->format('Y-m');
+
+        if ($new_fecha_inicio != $fecha_recarga_inicio || $new_fecha_termino != $fecha_recarga_termino) {
+            $in_recarga = false;
+        }
+        return $in_recarga;
+    }
+
+    public function returnKeyFile($data)
+    {
+        $new_key                = "{$data[$this->rut]}_{$data[$this->fecha_inicio]}_{$data[$this->fecha_termino]}_{$data[$this->nombre_tipo_ausentismo]}_{$data[$this->total_ausentismo]}_{$data[$this->meridiano]}";
+        return $new_key;
+    }
+
     public function withValidator($validator)
     {
         $assoc_array = array();
 
         $validator->after(function ($validator) use ($assoc_array) {
             foreach ($validator->getData() as $key => $data) {
-                $new_key                = "{$data[$this->rut]}_{$data[$this->fecha_inicio]}_{$data[$this->fecha_termino]}_{$data[$this->nombre_tipo_ausentismo]}_{$data[$this->total_ausentismo]}_{$data[$this->meridiano]}";
+                $new_key                = $this->returnKeyFile($data);
                 $rut                    = "{$data[$this->rut]}-{$data[$this->dv]}";
                 $fecha_inicio           = Carbon::parse($this->transformDate($data[$this->fecha_inicio]));
                 $fecha_termino          = Carbon::parse($this->transformDate($data[$this->fecha_termino]));
+                $calculo                = $this->totalDiasEnPeriodo($fecha_inicio, $fecha_termino);
+                $fecha_inicio_real      = Carbon::parse($calculo[0])->format('Y-m-d');
+                $fecha_termino_real     = Carbon::parse($calculo[1])->format('Y-m-d');
 
                 $validate               = $this->validateRut($rut);
+                $periodo_in_recarga     = $this->periodoInRecarga($fecha_inicio_real, $fecha_termino_real);
                 $exist_regla            = $this->validateExistMeridianoInRegla($rut, $data[$this->nombre_tipo_ausentismo], $data[$this->meridiano]);
                 $exist_tipo_ausentismo  = $this->existTipoAusentismoInGrupo($data[$this->nombre_tipo_ausentismo]);
-                $fechas                 = $this->validateFechasAusentismos($rut, $data[$this->nombre_tipo_ausentismo], $fecha_inicio, $fecha_termino);
+                $fechas                 = $this->validateFechasAusentismos($rut, $data[$this->nombre_tipo_ausentismo], $fecha_inicio, $fecha_termino, $data[$this->meridiano]);
                 $duplicado              = $this->validateDuplicadoAusentismos($rut, $data[$this->nombre_tipo_ausentismo], $fecha_inicio, $fecha_termino, $data[$this->meridiano]);
 
                 if (!$validate) {
                     $validator->errors()->add($key, 'Rut incorrecto, por favor verificar. Verificado con Módulo 11.');
+                } else if (!$periodo_in_recarga) {
+                    $validator->errors()->add($key, "Fechas fuera de periodo de recarga.");
                 } else if (!$exist_regla[0]) {
                     $validator->errors()->add($key, $exist_regla[1]);
                 } else if (in_array($new_key, $assoc_array)) {
@@ -320,22 +453,21 @@ class GrupoDosImport implements ToCollection, WithHeadingRow, WithValidation
             ],
             $this->dv => [
                 'required',
-                'min:1',
                 'max:1'
             ],
             $this->nombre_tipo_ausentismo => [
-                'exists:tipo_ausentismos,nombre'
+                'required'
             ],
             $this->fecha_inicio => [
                 'required',
-                new FechaRecarga(true, $this->fecha_inicio, $this->recarga)
+                'numeric'
             ],
             $this->fecha_termino => [
                 'required',
-                new FechaRecarga(false, $this->fecha_termino, $this->recarga)
+                'numeric'
             ],
             $this->total_ausentismo => [
-                'required',
+                'nullable',
                 'numeric'
             ],
             $this->meridiano => [
@@ -349,7 +481,7 @@ class GrupoDosImport implements ToCollection, WithHeadingRow, WithValidation
     {
         return [
             "{$this->rut}.required"                                         => 'El rut es obligatorio.',
-            "{$this->rut}.integer"                                          => 'El rut debe ser un valor numérico.',
+            "{$this->rut}.numeric"                                          => 'El rut debe ser un valor numérico.',
             "{$this->rut}.exists"                                           => 'El rut no existe en el sistema',
 
             "{$this->dv}.required"                                          => 'El dv es obligatorio.',
@@ -357,7 +489,6 @@ class GrupoDosImport implements ToCollection, WithHeadingRow, WithValidation
             "{$this->dv}.max"                                               => 'El dv tiene :max caracter máximo',
 
             "{$this->nombre_tipo_ausentismo}.required"                      => 'El nombre de ausentismo obligatorio.',
-            "{$this->nombre_tipo_ausentismo}.exists"                        => 'El nombre de ausentismo no existe en el sistema',
 
             "{$this->fecha_inicio}.required"                                => 'La fecha de inicio es obligatoria.',
             "{$this->fecha_inicio}.date"                                    => 'La fecha debe ser yyyy-mm-dd.',

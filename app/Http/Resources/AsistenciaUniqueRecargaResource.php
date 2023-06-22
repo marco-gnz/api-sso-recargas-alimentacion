@@ -30,8 +30,7 @@ class AsistenciaUniqueRecargaResource extends JsonResource
     {
         $exist      = false;
         $fecha      = $asistencia->fecha;
-        $contratos  = $asistencia->funcionario->contratos()
-            ->where('recarga_id', $asistencia->recarga->id)
+        $contratos  = $asistencia->esquema->contratos()
             ->where(function ($query) use ($fecha) {
                 $query->where('fecha_inicio_periodo', '<=', $fecha)
                     ->where('fecha_termino_periodo', '>=', $fecha);
@@ -55,7 +54,8 @@ class AsistenciaUniqueRecargaResource extends JsonResource
             'tipo_asistencia_turno'     => $this->tipoAsistenciaTurno,
             'exist_asistencia'          => false,
             'exist_contrato'            => $this->existContrato($this),
-            'observaciones_count'       => $this->observaciones()->count()
+            'observaciones_count'       => $this->observaciones()->count(),
+            'esquema_uuid'              => $this->esquema ? $this->esquema->uuid : null,
         ];
     }
 }

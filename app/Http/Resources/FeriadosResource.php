@@ -21,6 +21,7 @@ class FeriadosResource extends JsonResource
             'fecha_corta'               => $this->fecha ? Carbon::parse($this->fecha)->format('d-m-Y') : null,
             'fecha_larga'               => $this->fecha ? Carbon::parse($this->fecha)->formatLocalized('%A') : null,
             'fecha_not_format'          => $this->fecha ? Carbon::parse($this->fecha)->format('Y-m-d') : null,
+            'disabled'                  => Carbon::parse($this->fecha)->isWeekend(),
             'nombre'                    => $this->nombre ? $this->nombre : null,
             'irrenunciable'             => $this->irrenunciable != null ? ($this->irrenunciable ? 'Si' : 'No') : null,
             'irrenunciable_value'       => $this->irrenunciable != null ? ($this->irrenunciable ? true : false) : null,

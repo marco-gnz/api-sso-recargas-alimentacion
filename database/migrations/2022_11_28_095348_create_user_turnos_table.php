@@ -30,6 +30,9 @@ class CreateUserTurnosTable extends Migration
             $table->foreign('recarga_id')->references('id')->on('recargas');
             $table->unsignedBigInteger('recarga_id')->nullable();
 
+            $table->foreign('esquema_id')->references('id')->on('esquemas');
+            $table->unsignedBigInteger('esquema_id')->nullable();
+
             $table->foreign('proceso_id')->references('id')->on('proceso_turnos');
             $table->unsignedBigInteger('proceso_id')->nullable();
 

@@ -132,31 +132,31 @@ class ColumnasImportController extends Controller
     {
         $columnas   = [
             [
-                'nombre_columna'        => 'rut',
+                'nombre_columna'        => 'RUT',
                 'formato'               => $this->numerico,
                 'required'              => true,
                 'descripcion'           => 'Rut de funcionario'
             ],
             [
-                'nombre_columna'        => 'dv',
+                'nombre_columna'        => 'DV',
                 'formato'               => $this->texto,
                 'required'              => true,
                 'descripcion'           => 'Dígito verificador'
             ],
             [
-                'nombre_columna'        => 'nombretipoausentismo',
+                'nombre_columna'        => 'TIPO DE AUSENTISMO',
                 'formato'               => $this->texto,
                 'required'              => true,
                 'descripcion'           => 'Nombre de tipo de ausentismo'
             ],
             [
-                'nombre_columna'        => 'fechainicio',
+                'nombre_columna'        => 'F.INICIO',
                 'formato'               => $this->fecha,
                 'required'              => true,
                 'descripcion'           => 'Fecha de inicio ausentimo'
             ],
             [
-                'nombre_columna'        => 'fechatermino',
+                'nombre_columna'        => 'F.TERMINO',
                 'formato'               => $this->fecha,
                 'required'              => true,
                 'descripcion'           => 'Fecha de término ausentimo'
@@ -169,46 +169,46 @@ class ColumnasImportController extends Controller
     {
         $columnas   = [
             [
-                'nombre_columna'        => 'rut',
+                'nombre_columna'        => 'RUT',
                 'formato'               => $this->numerico,
                 'required'              => true,
                 'descripcion'           => 'Rut de funcionario'
             ],
             [
-                'nombre_columna'        => 'dv',
+                'nombre_columna'        => 'DV',
                 'formato'               => $this->texto,
                 'required'              => true,
                 'descripcion'           => 'Dígito verificador'
             ],
             [
-                'nombre_columna'        => 'nombretipoausentismo',
+                'nombre_columna'        => 'TIPO DE AUSENTISMO',
                 'formato'               => $this->texto,
                 'required'              => true,
                 'descripcion'           => 'Nombre de tipo de ausentismo'
             ],
             [
-                'nombre_columna'        => 'fechainicio',
+                'nombre_columna'        => 'F.INICIO',
                 'formato'               => $this->fecha,
                 'required'              => true,
                 'descripcion'           => 'Fecha de inicio ausentimo'
             ],
             [
-                'nombre_columna'        => 'fechatermino',
+                'nombre_columna'        => 'F.TERMINO',
                 'formato'               => $this->fecha,
                 'required'              => true,
                 'descripcion'           => 'Fecha de término ausentimo'
             ],
             [
-                'nombre_columna'        => 'total ausentismo',
+                'nombre_columna'        => 'TOTAL AUSENTISMO',
                 'formato'               => $this->numerico,
-                'required'              => true,
+                'required'              => false,
                 'descripcion'           => 'Ej. -0.5, -1,  -1.5, -2, etc.'
             ],
             [
-                'nombre_columna'        => 'meridiano',
+                'nombre_columna'        => 'MERIDIANO AUSENTISMO',
                 'formato'               => $this->texto,
                 'required'              => true,
-                'descripcion'           => Meridiano::all()->pluck('nombre')->implode(' - ')
+                'descripcion'           => Meridiano::all()->pluck('codigo')->implode(' - ')
             ]
         ];
         return $columnas;
@@ -218,43 +218,43 @@ class ColumnasImportController extends Controller
     {
         $columnas   = [
             [
-                'nombre_columna'        => 'rut',
+                'nombre_columna'        => 'RUT',
                 'formato'               => $this->numerico,
                 'required'              => true,
                 'descripcion'           => 'Rut de funcionario'
             ],
             [
-                'nombre_columna'        => 'dv',
+                'nombre_columna'        => 'DV',
                 'formato'               => $this->texto,
                 'required'              => true,
                 'descripcion'           => 'Dígito verificador'
             ],
             [
-                'nombre_columna'        => 'nombretipoausentismo',
+                'nombre_columna'        => 'TIPO DE AUSENTISMO',
                 'formato'               => $this->texto,
                 'required'              => true,
                 'descripcion'           => 'Nombre de tipo de ausentismo'
             ],
             [
-                'nombre_columna'        => 'fechainicio',
+                'nombre_columna'        => 'F.INICIO',
                 'formato'               => $this->fecha,
                 'required'              => true,
                 'descripcion'           => 'Fecha de inicio ausentimo'
             ],
             [
-                'nombre_columna'        => 'fechatermino',
+                'nombre_columna'        => 'F.TERMINO',
                 'formato'               => $this->fecha,
                 'required'              => true,
                 'descripcion'           => 'Fecha de término ausentimo'
             ],
             [
-                'nombre_columna'        => 'horainicio',
+                'nombre_columna'        => 'H.INICIO',
                 'formato'               => $this->hora,
                 'required'              => true,
                 'descripcion'           => 'Hora de inicio ausentimo. Ej. 11:00'
             ],
             [
-                'nombre_columna'        => 'horatermino',
+                'nombre_columna'        => 'H.TERMINO',
                 'formato'               => $this->hora,
                 'required'              => true,
                 'descripcion'           => 'Hora de término ausentimo. Ej. 16:00'
@@ -446,13 +446,13 @@ class ColumnasImportController extends Controller
                 'descripcion'           => 'Dígito verificador'
             ],
             [
-                'nombre_columna'        => 'fechainicio',
+                'nombre_columna'        => 'fecha inicio',
                 'formato'               => $this->fecha,
                 'required'              => true,
                 'descripcion'           => 'Fecha inicio de viático'
             ],
             [
-                'nombre_columna'        => 'fechatermino',
+                'nombre_columna'        => 'fecha termino',
                 'formato'               => $this->fecha,
                 'required'              => true,
                 'descripcion'           => 'Fecha término de viático'
@@ -464,37 +464,37 @@ class ColumnasImportController extends Controller
                 'descripcion'           => 'Jornada (MAÑANA, TODO EL DÍA, NOCHE, ETC.)'
             ],
             [
-                'nombre_columna'        => 'tiporesolucion',
+                'nombre_columna'        => 'tipo resolucion',
                 'formato'               => $this->texto,
                 'required'              => true,
                 'descripcion'           => 'Tipo de resolución (EXENTA - DECRETO)'
             ],
             [
-                'nombre_columna'        => 'numeroresolucion',
+                'nombre_columna'        => 'numero resolucion',
                 'formato'               => $this->numerico,
                 'required'              => true,
                 'descripcion'           => "Número de resolución"
             ],
             [
-                'nombre_columna'        => 'fecharesolucion',
+                'nombre_columna'        => 'fecha resolucion',
                 'formato'               => $this->fecha,
                 'required'              => true,
                 'descripcion'           => 'Fecha de resolución'
             ],
             [
-                'nombre_columna'        => 'tipocomision',
+                'nombre_columna'        => 'tipo comision',
                 'formato'               => $this->texto,
                 'required'              => true,
                 'descripcion'           => 'Tipo de comisión (Ej. Servicios, Capacitación, etc.)'
             ],
             [
-                'nombre_columna'        => 'motivoviatico',
+                'nombre_columna'        => 'motivo',
                 'formato'               => $this->texto,
                 'required'              => true,
                 'descripcion'           => 'Motivo de viático (Ej. TRASLADO DE PACIENTE, ATENCION POSTA SALUD RURAL, ETC.)'
             ],
             [
-                'nombre_columna'        => 'valorviatico',
+                'nombre_columna'        => 'valor viatico',
                 'formato'               => $this->numerico,
                 'required'              => true,
                 'descripcion'           => "Valor de viático"

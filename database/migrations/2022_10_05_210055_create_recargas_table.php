@@ -20,12 +20,16 @@ class CreateRecargasTable extends Migration
             $table->string('mes_beneficio');
             $table->integer('total_dias_mes_beneficio');
             $table->integer('total_dias_laborales_beneficio');
+            $table->integer('total_dias_habiles_beneficio');
             $table->year('anio_calculo');
             $table->string('mes_calculo');
             $table->integer('total_dias_mes_calculo');
             $table->integer('total_dias_laborales_calculo');
+            $table->integer('total_dias_habiles_calculo');
             $table->bigInteger('monto_dia')->nullable();
+            $table->bigInteger('monto_estimado')->nullable();
             $table->boolean('active')->default(1);
+            $table->unsignedSmallInteger('last_status')->nullable();
 
             $table->foreign('establecimiento_id')->references('id')->on('establecimientos');
             $table->unsignedBigInteger('establecimiento_id')->nullable();

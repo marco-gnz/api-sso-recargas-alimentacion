@@ -17,12 +17,14 @@ use App\Models\Recarga;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use App\Http\Controllers\Admin\Calculos\PagoBeneficioController;
 
 class RecargaReajustesController extends Controller
 {
-    public function __construct()
+    public function __construct(PagoBeneficioController $PagoBeneficioController)
     {
         $this->middleware(['auth:sanctum']);
+        $this->PagoBeneficioController = $PagoBeneficioController;
     }
 
     protected function successResponse($data, $title = null, $message = null, $code = 200)
@@ -75,7 +77,6 @@ class RecargaReajustesController extends Controller
             $estados              = $request->estados;
             $recarga              = Recarga::where('codigo', $codigo)->firstOrFail();
             $reajustes            = $recarga->reajustes()->input($request->input)->tipos($request->tipos)->estados($request->estados)->get();
-            /* return $this->successResponse(RecargaReajustesResource::collection($reajustes)); */
             return RecargaReajustesResource::collection($reajustes)->additional(
                 [
                     'estados'       => ReajusteEstado::STATUS_IDS,
@@ -180,13 +181,14 @@ class RecargaReajustesController extends Controller
                 $reajuste->save();
 
                 $funcionario = $funcionario->fresh();
+                $new_user    = $this->PagoBeneficioController->returnFuncionario($funcionario, $recarga);
 
                 return response()->json(
                     array(
                         'status'    => 'Success',
                         'title'     => 'Reajuste ingresado con éxito.',
                         'message'   => null,
-                        'user'      => TablaResumenResource::make($funcionario),
+                        'user'      => TablaResumenResource::make($new_user),
                         'recarga'   => RecargaResumenResource::make($recarga)
                     )
                 );

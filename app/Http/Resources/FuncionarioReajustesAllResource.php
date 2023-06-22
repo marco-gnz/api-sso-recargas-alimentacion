@@ -28,21 +28,24 @@ class FuncionarioReajustesAllResource extends JsonResource
             'fecha_inicio'          => $fecha_inicio,
             'fecha_termino'         => $fecha_termino,
             'dias_periodo'          => $this->dias_periodo,
-            'dias'                  => $this->dias,
-            'status'                => $this->latestStatus->status,
+            'dias_periodo_habiles'  => $this->dias_periodo_habiles,
+            'total_dias'            => $this->total_dias,
+            'status'                => $this->last_status,
             'incremento'            => $this->incremento ? true : false,
             'incremento_nombre'     => $this->incremento ? 'Incremento' : 'Rebaja',
+            'calculo_dias'          => $this->calculo_dias ? 'Días de periodo' : 'Días hábiles',
             'tipo_reajuste'         => $this->tipo_reajuste,
             'tipo_reajuste_nombre'  => Reajuste::TYPE_NOM[$this->tipo_reajuste],
             'valor_dia'             => $valor_dia != null ? "$"."{$valor_dia}" : null,
             'monto_ajuste'          => $monto_ajuste != null ? "$"."{$monto_ajuste}" : null,
-            'status_nombre'         => ReajusteEstado::STATUS_NOM[$this->latestStatus->status],
+            'status_nombre'         => ReajusteEstado::STATUS_NOM[$this->last_status],
             'tipo_ausentismo'       => $this->tipoAusentismo != null ? $this->tipoAusentismo->nombre : null,
             'tipo_incremento'       => $this->tipoIncremento != null ? $this->tipoIncremento->nombre : null,
             'observacion'           => $this->observacion,
             'user_created_by'       => $this->userCreatedBy != null ? "{$this->userCreatedBy->nombres} {$this->userCreatedBy->apellidos}" : null,
             'date_created_user'     => Carbon::parse($this->date_created_user)->format('d-m-Y H:i a'),
-            'estados'               => EstadosReajusteResource::collection($this->estados)
+            'estados'               => EstadosReajusteResource::collection($this->estados),
+            'alertas'               => AlertasReajuste::collection($this->alertas)
         ];
     }
 }

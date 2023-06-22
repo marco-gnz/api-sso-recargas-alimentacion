@@ -17,6 +17,7 @@ class CreateMeridianoReglaTable extends Migration
             $table->bigIncrements('id');
             $table->unsignedInteger('meridiano_id');
             $table->unsignedInteger('regla_id');
+            $table->boolean('active')->default(0);
             $table->timestamps();
         });
     }

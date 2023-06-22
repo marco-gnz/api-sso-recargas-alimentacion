@@ -254,9 +254,9 @@ class ViaticosImport implements WithValidation, ToCollection, WithHeadingRow
 
                 if (!$validate) {
                     $validator->errors()->add($key, 'Rut incorrecto, por favor verificar. Verificado con Módulo 11.');
-                } else if (!$exist_funcionario_in_recarga) {
+                } /* else if (!$exist_funcionario_in_recarga) {
                     $validator->errors()->add($key, 'Funcionario no existe en recarga como vigente.');
-                } else if (!$periodo_in_recarga) {
+                }  */else if (!$periodo_in_recarga) {
                     $validator->errors()->add($key, "Fechas fuera de periodo de recarga.");
                 } else if ($viatico_duplicado) {
                     $validator->errors()->add($key, "Ya existe un registro idéntico en el sistema.");

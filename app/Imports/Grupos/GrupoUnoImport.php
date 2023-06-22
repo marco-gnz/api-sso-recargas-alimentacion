@@ -19,6 +19,9 @@ use App\Rules\RutValidateRule;
 use Carbon\Carbon;
 use Maatwebsite\Excel\Concerns\ToArray;
 use Illuminate\Support\Facades\Validator;
+use App\Http\Controllers\Admin\Esquema\EsquemaController;
+use App\Models\Esquema;
+use Illuminate\Support\Facades\Log;
 
 class GrupoUnoImport implements ToCollection, WithHeadingRow, WithValidation
 {
@@ -29,14 +32,15 @@ class GrupoUnoImport implements ToCollection, WithHeadingRow, WithValidation
         $this->columnas                 = $columnas;
         $this->row_columnas             = $row_columnas;
 
-        $this->rut                      = strtolower($this->columnas[0]);
-        $this->dv                       = strtolower($this->columnas[1]);
-        $this->nombre_tipo_ausentismo   = strtolower($this->columnas[2]);
-        $this->fecha_inicio             = strtolower($this->columnas[3]);
-        $this->fecha_termino            = strtolower($this->columnas[4]);
+        $this->rut                      = $this->columnas[0];
+        $this->dv                       = $this->columnas[1];
+        $this->nombre_tipo_ausentismo   = $this->columnas[2];
+        $this->fecha_inicio             = $this->columnas[3];
+        $this->fecha_termino            = $this->columnas[4];
     }
 
     public $data;
+    public $data_sobrante;
 
     public function headingRow(): int
     {
@@ -99,17 +103,13 @@ class GrupoUnoImport implements ToCollection, WithHeadingRow, WithValidation
         }
     }
 
-    public function existTipoAusentismoInGrupo($nombre_tipo_ausentismo)
+    public function existTipoAusentismoInGrupo($tipo_ausentismo)
     {
         $exist = false;
-
-        $nombre_tipo_ausentismo = ltrim($nombre_tipo_ausentismo);
-        $tipo_ausentismo = TipoAusentismo::where('codigo_sirh', $nombre_tipo_ausentismo)->orWhere('nombre', $nombre_tipo_ausentismo)->first();
-
         if ($tipo_ausentismo) {
-            $regla = Regla::where('tipo_ausentismo_id', $tipo_ausentismo->id)->where('grupo_id', 1)->first();
+            $querys = $this->recarga->reglas()->where('tipo_ausentismo_id', $tipo_ausentismo->id)->where('grupo_id', 1)->count();
 
-            if ($regla) {
+            if ($querys > 0) {
                 $exist = true;
             }
         }
@@ -121,36 +121,68 @@ class GrupoUnoImport implements ToCollection, WithHeadingRow, WithValidation
     {
         try {
             $ausentismos = [];
+            $ausentismos_sobrante = [];
+
             if (count($rows) > 0) {
                 foreach ($rows as $row) {
-                    $rut                 = "{$row[$this->rut]}-{$row[$this->dv]}";
-                    $funcionario         = User::where('rut', $rut)->first();
+                    $rut = "{$row[$this->rut]}-{$row[$this->dv]}";
+                    $funcionario = User::where('rut', $rut)->first();
 
                     $nom_tipo_ausentismo = ltrim($row[$this->nombre_tipo_ausentismo]);
-                    $tipo_ausentismo     = TipoAusentismo::where('codigo_sirh', $nom_tipo_ausentismo)->orWhere('nombre', $nom_tipo_ausentismo)->first();
+                    $tipo_ausentismo = TipoAusentismo::where('codigo_sirh', $nom_tipo_ausentismo)
+                        ->orWhere('nombre', $nom_tipo_ausentismo)
+                        ->first();
 
                     if ($funcionario && $tipo_ausentismo) {
-                        $regla          = Regla::where('tipo_ausentismo_id', $tipo_ausentismo->id)->first();
+                        $esquema_controller     = new EsquemaController;
+                        $esquema                = $esquema_controller->returnEsquema($funcionario->id, $this->recarga->id);
+                        $exist_tipo_ausentismo  = $this->existTipoAusentismoInGrupo($tipo_ausentismo);
+                        $turnante               = $esquema ? ($esquema->es_turnante != 2 ? true : false) : null;
 
-                        $fecha_inicio   = Carbon::parse($this->transformDate($row[$this->fecha_inicio]));
-                        $fecha_termino  = Carbon::parse($this->transformDate($row[$this->fecha_termino]));
+                        $regla = $this->recarga->reglas()
+                            ->where('grupo_id', 1)
+                            ->where('tipo_ausentismo_id', $tipo_ausentismo->id)
+                            ->first();
 
-                        $data = [
-                            'nombres'                   => $funcionario->nombre_completo,
-                            'nombre_tipo_ausentismo'    => $tipo_ausentismo->nombre,
-                            'grupo'                     => $regla->grupoAusentismo->nombre,
-                            'fecha_inicio'              => $fecha_inicio->format('d-m-Y'),
-                            'fecha_termino'             => $fecha_termino->format('d-m-Y'),
-                        ];
-                        array_push($ausentismos, $data);
+                        $fecha_inicio = Carbon::parse($this->transformDate($row[$this->fecha_inicio]));
+                        $fecha_termino = Carbon::parse($this->transformDate($row[$this->fecha_termino]));
+
+                        $compensatorio_dias = $this->validateFechaDiasCompensatoriosAndCompensacionTiempoLibre($rut, $tipo_ausentismo->nombre, $fecha_inicio, $fecha_termino);
+
+                        if (!$compensatorio_dias && $regla) {
+                            $data = [
+                                'nombres'                   => $funcionario->nombre_completo,
+                                'turnante'                  => $esquema ? Esquema::TURNANTE_NOM[$esquema->es_turnante] : '--',
+                                'nombre_tipo_ausentismo'    => $tipo_ausentismo ? $tipo_ausentismo->nombre : '--',
+                                'grupo'                     => $regla ? $regla->grupoAusentismo->nombre : '--',
+                                'tipo_dias'                 => $regla ? ($regla->active_tipo_dias ? ($regla->tipo_dias ? 'Hábiles' : 'Naturales') : 'FuncionarioTurno') : 'FuncionarioTurno',
+                                'fecha_inicio'              => $fecha_inicio->format('d-m-Y'),
+                                'fecha_termino'             => $fecha_termino->format('d-m-Y')
+                            ];
+                            array_push($ausentismos, $data);
+                        } else {
+                            $data = [
+                                'nombres'                   => $funcionario->nombre_completo,
+                                'turnante'                  => $esquema ? Esquema::TURNANTE_NOM[$esquema->es_turnante] : '--',
+                                'nombre_tipo_ausentismo'    => $tipo_ausentismo ? $tipo_ausentismo->nombre : '--',
+                                'grupo'                     => $regla ? $regla->grupoAusentismo->nombre : '--',
+                                'tipo_dias'                 => $regla ? ($regla->active_tipo_dias ? ($regla->tipo_dias ? 'Hábiles' : 'Naturales') : 'FuncionarioTurno') : 'FuncionarioTurno',
+                                'fecha_inicio'              => $fecha_inicio->format('d-m-Y'),
+                                'fecha_termino'             => $fecha_termino->format('d-m-Y')
+                            ];
+                            array_push($ausentismos_sobrante, $data);
+                        }
                     }
                 }
-                $this->data = $ausentismos;
             }
+
+            $this->data = $ausentismos;
+            $this->data_sobrante = $ausentismos_sobrante;
         } catch (\Exception $error) {
             return $error->getMessage();
         }
     }
+
 
     public function validateRut($value)
     {
@@ -182,9 +214,10 @@ class GrupoUnoImport implements ToCollection, WithHeadingRow, WithValidation
             return false;
     }
 
-    public function validateFechasAusentismos($rut_completo, $tipo_ausentismo, $fecha_inicio, $fecha_termino)
+    public function validateFechaDiasCompensatoriosAndCompensacionTiempoLibre($rut_completo, $tipo_ausentismo, $fecha_inicio, $fecha_termino)
     {
-        $tiene                  = false;
+        $existe = false;
+
         $newformat_fecha_ini    = Carbon::parse($fecha_inicio)->format('Y-m-d');
         $newformat_fecha_fin    = Carbon::parse($fecha_termino)->format('Y-m-d');
 
@@ -192,51 +225,73 @@ class GrupoUnoImport implements ToCollection, WithHeadingRow, WithValidation
         $tipo_ausentismo        = ltrim($tipo_ausentismo);
         $tipo_ausentismo        = TipoAusentismo::where('nombre', $tipo_ausentismo)->first();
 
-        if ($funcionario && $tipo_ausentismo) {
-            $validacion_1 = Ausentismo::where('recarga_id', $this->recarga->id)
+        if (($funcionario && $tipo_ausentismo) && ($tipo_ausentismo->id === 3)) {
+            $compensacion_tiempo_libre_id = 26;
+            $validacion = Ausentismo::where('recarga_id', $this->recarga->id)
                 ->where('user_id', $funcionario->id)
-                ->where('fecha_inicio', '<=', $newformat_fecha_ini)
-                ->where('fecha_termino', '>=', $newformat_fecha_ini)
+                ->where('tipo_ausentismo_id', $compensacion_tiempo_libre_id)
+                ->where('fecha_inicio_periodo', '>=', $newformat_fecha_ini)
+                ->where('fecha_termino_periodo', '<=', $newformat_fecha_fin)
                 ->where(function ($query) {
                     $query->whereHas('recarga', function ($query) {
                         $query->where('active', true);
                     });
                 })->count();
 
-            if ($validacion_1 > 0) {
-                $tiene = true;
-            }
-
-            $validacion_2 = Ausentismo::where('recarga_id', $this->recarga->id)
-                ->where('user_id', $funcionario->id)
-                ->where('fecha_inicio', '<=', $newformat_fecha_fin)
-                ->where('fecha_termino', '>=', $newformat_fecha_fin)
-                ->where(function ($query) {
-                    $query->whereHas('recarga', function ($query) {
-                        $query->where('active', true);
-                    });
-                })->count();
-
-            if ($validacion_2 > 0) {
-                $tiene = true;
-            }
-
-            $validacion_3 = Ausentismo::where('recarga_id', $this->recarga->id)
-                ->where('user_id', $funcionario->id)
-                ->where('fecha_inicio', '>=', $newformat_fecha_ini)
-                ->where('fecha_termino', '<=', $newformat_fecha_fin)
-                ->where(function ($query) {
-                    $query->whereHas('recarga', function ($query) {
-                        $query->where('active', true);
-                    });
-                })->count();
-
-            if ($validacion_3 > 0) {
-                $tiene = true;
+            if ($validacion > 0) {
+                $existe = true;
             }
         }
+        return $existe;
+    }
 
-        return $tiene;
+    public function validateFechasAusentismos($rut_completo, $tipo_ausentismo, $fecha_inicio, $fecha_termino)
+    {
+        $newformat_fecha_ini = Carbon::parse($fecha_inicio)->format('Y-m-d');
+        $newformat_fecha_fin = Carbon::parse($fecha_termino)->format('Y-m-d');
+
+        $funcionario = User::where('rut_completo', $rut_completo)->first();
+        $tipo_ausentismo = ltrim($tipo_ausentismo);
+        $tipo_ausentismo = TipoAusentismo::where('nombre', $tipo_ausentismo)->first();
+        $compensacion_tiempo_libre_id = 26;
+
+        if ($funcionario && $tipo_ausentismo) {
+            $query = $this->recarga->ausentismos()->where('recarga_id', $this->recarga->id)
+                ->where('user_id', $funcionario->id)
+                ->where('tipo_ausentismo_id', '!=', $compensacion_tiempo_libre_id)
+                ->where(function ($query) use ($newformat_fecha_ini, $newformat_fecha_fin) {
+                    $query->where(function ($query) use ($newformat_fecha_ini, $newformat_fecha_fin) {
+                        $query->where('fecha_inicio_periodo', '<=', $newformat_fecha_ini)
+                            ->where('fecha_termino_periodo', '>=', $newformat_fecha_ini);
+                    })->orWhere(function ($query) use ($newformat_fecha_ini, $newformat_fecha_fin) {
+                        $query->where('fecha_inicio_periodo', '<=', $newformat_fecha_fin)
+                            ->where('fecha_termino_periodo', '>=', $newformat_fecha_fin);
+                    })->orWhere(function ($query) use ($newformat_fecha_ini, $newformat_fecha_fin) {
+                        $query->where('fecha_inicio_periodo', '>=', $newformat_fecha_ini)
+                            ->where('fecha_termino_periodo', '<=', $newformat_fecha_fin);
+                    });
+                });
+
+            $tiene = $query->whereHas('recarga', function ($query) {
+                $query->where('active', true);
+            })->first();
+
+            if($tiene){
+                Log::info($tiene);
+                return (object) [
+                    'ausentismo'       => $tiene,
+                    'value'         => $tiene ? true : false
+                ];
+            }else{
+                Log::info('no tiene');
+            }
+
+        }
+
+        return (object) [
+            'ausentismo'       => null,
+            'value'         => false
+        ];
     }
 
     public function validateDuplicadoAusentismos($rut_completo, $tipo_ausentismo, $fecha_inicio, $fecha_termino)
@@ -332,6 +387,7 @@ class GrupoUnoImport implements ToCollection, WithHeadingRow, WithValidation
             foreach ($validator->getData() as $key => $data) {
                 $new_key                = $this->returnKeyFile($data);
                 $rut                    = "{$data[$this->rut]}-{$data[$this->dv]}";
+                $validate               = $this->validateRut($rut);
                 $fecha_inicio           = Carbon::parse($this->transformDate($data[$this->fecha_inicio]));
                 $fecha_termino          = Carbon::parse($this->transformDate($data[$this->fecha_termino]));
                 $calculo                = $this->totalDiasEnPeriodo($fecha_inicio, $fecha_termino);
@@ -340,27 +396,21 @@ class GrupoUnoImport implements ToCollection, WithHeadingRow, WithValidation
 
                 $periodo_in_recarga     = $this->periodoInRecarga($fecha_inicio_real, $fecha_termino_real);
                 $validate               = $this->validateRut($rut);
-                $exist_funcionario_in_recarga   = $this->existFuncionarioInRecarga($rut);
                 $exist_t_ausen          = $this->existTipoAusentismo($data[$this->nombre_tipo_ausentismo]);
-                $fechas                 = $this->validateFechasAusentismos($rut, $data[$this->nombre_tipo_ausentismo], $fecha_inicio, $fecha_termino);
+                $fechas                 = $this->validateFechasAusentismos($rut, $data[$this->nombre_tipo_ausentismo], $fecha_inicio_real, $fecha_termino_real);
                 $duplicado              = $this->validateDuplicadoAusentismos($rut, $data[$this->nombre_tipo_ausentismo], $fecha_inicio, $fecha_termino);
-                $exist_tipo_ausentismo  = $this->existTipoAusentismoInGrupo($data[$this->nombre_tipo_ausentismo]);
 
 
                 if (!$validate) {
                     $validator->errors()->add($key, 'Rut incorrecto, por favor verificar. Verificado con Módulo 11.');
-                } else if (!$exist_funcionario_in_recarga) {
-                    $validator->errors()->add($key, 'Funcionario no existe en recarga como vigente.');
                 } else if (!$periodo_in_recarga) {
                     $validator->errors()->add($key, "Fechas fuera de periodo de recarga.");
                 } else if (!$exist_t_ausen) {
                     $validator->errors()->add($key, 'Tipo de ausentismo no existe.');
-                } else if ($fechas) {
-                    $validator->errors()->add($key, 'Ya existe un ausentismo en las fechas de registro.');
+                } else if ($fechas->value) {
+                    $validator->errors()->add($key, "Ya existe un ausentismo en las fechas de registro.");
                 } else if ($duplicado) {
                     $validator->errors()->add($key, 'Registro duplicado.');
-                } else if (!$exist_tipo_ausentismo) {
-                    $validator->errors()->add($key, 'Tipo de ausentismo no existe en grupo de reglas seleccionado.');
                 } else if (in_array($new_key, $assoc_array)) {
                     $validator->errors()->add($key, 'Registro duplicado en archivo.');
                 }
@@ -379,17 +429,18 @@ class GrupoUnoImport implements ToCollection, WithHeadingRow, WithValidation
             ],
             $this->dv => [
                 'required',
-                'min:1',
                 'max:1'
             ],
             $this->nombre_tipo_ausentismo => [
-                'required',
+                'required'
             ],
             $this->fecha_inicio => [
-                'required'
+                'required',
+                'numeric'
             ],
             $this->fecha_termino => [
                 'required',
+                'numeric'
             ]
         ];
     }

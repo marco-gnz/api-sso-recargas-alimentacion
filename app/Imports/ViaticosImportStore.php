@@ -8,6 +8,8 @@ use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
 use Carbon\Carbon;
+use App\Http\Controllers\Admin\Calculos\ActualizarEsquemaController;
+use App\Http\Controllers\Admin\Esquema\EsquemaController;
 
 class ViaticosImportStore implements ToModel, WithHeadingRow, WithValidation
 {
@@ -34,6 +36,7 @@ class ViaticosImportStore implements ToModel, WithHeadingRow, WithValidation
     }
 
     public $importados  = 0;
+    public $editados    = 0;
 
     public function headingRow(): int
     {
@@ -110,6 +113,8 @@ class ViaticosImportStore implements ToModel, WithHeadingRow, WithValidation
             $rut                = "{$row[$this->rut]}-{$row[$this->dv]}";
             $funcionario        = User::where('rut', $rut)->first();
             if ($funcionario) {
+                $esquema_controller     = new EsquemaController;
+                $esquema                = $esquema_controller->returnEsquema($funcionario->id, $this->recarga->id);
                 $fecha_inicio       = Carbon::parse($this->transformDate($row[$this->fecha_inicio]));
                 $fecha_termino      = Carbon::parse($this->transformDate($row[$this->fecha_termino]));
                 $fecha_resolucion   = Carbon::parse($this->transformDate($row[$this->fecha_resolucion]));
@@ -128,12 +133,15 @@ class ViaticosImportStore implements ToModel, WithHeadingRow, WithValidation
                     'tipo_comision'             => $row[$this->tipo_comision],
                     'motivo_viatico'            => $row[$this->motivo_viatico],
                     'valor_viatico'             => $row[$this->valor_viatico],
-                    'recarga_id'                => $this->recarga->id
+                    'recarga_id'                => $this->recarga->id,
+                    'esquema_id'                => $esquema ? $esquema->id : NULL
                 ];
 
                 $viatico = Viatico::create($data);
 
                 if ($viatico) {
+                    $cartola_controller = new ActualizarEsquemaController;
+                    $cartola_controller->updateEsquemaViaticos($funcionario, $this->recarga);
                     $this->importados++;
                     return $viatico;
                 }

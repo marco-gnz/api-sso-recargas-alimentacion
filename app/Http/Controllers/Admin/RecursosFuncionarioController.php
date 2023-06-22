@@ -15,7 +15,7 @@ class RecursosFuncionarioController extends Controller
             $recarga        = Recarga::where('codigo', $request->codigo_recarga)->firstOrFail();
             $funcionario    = User::where('uuid', $uuid)->firstOrFail();
 
-            $recargas       = $funcionario->recargas()->where('recargas.id', '!=', $recarga->id)->with('establecimiento')->get();
+            $recargas       = $funcionario->recargas()/* ->where('recargas.id', '!=', $recarga->id) */->with('establecimiento')->get();
 
             return response()->json(
                 array(

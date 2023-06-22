@@ -21,6 +21,6 @@ class Meridiano extends Model
 
     public function reglas()
     {
-        return $this->belongsToMany(Regla::class);
+        return $this->belongsToMany(Regla::class)->withPivot('active');
     }
 }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\AsistenciaRecargaResource;
+use App\Http\Resources\Esquema\EsquemaResource;
 use App\Http\Resources\FuncionarioAusentismosResource;
 use App\Http\Resources\FuncionarioContratosResource;
 use App\Http\Resources\FuncionarioReajustesResource;
@@ -164,19 +165,28 @@ class RecargaFuncionarioController extends Controller
         }
     }
 
+    public function withFnAsistencias($recarga)
+    {
+        $function = ['asistencias' => function ($query) use ($recarga) {
+            $query->where('recarga_id', $recarga->id)->get();
+        }];
+        return $function;
+    }
+
     public function returnAsistenciasFuncionario($codigo, $uuid)
     {
         try {
-            $funcionario    = User::where('uuid', $uuid)->get();
-            $recarga        = Recarga::where('codigo', $codigo)->first();
+            $recarga                = Recarga::where('codigo', $codigo)->first();
+            $withFnAsistencias      = $this->withFnAsistencias($recarga);
+            $funcionario            = User::where('uuid', $uuid)->with($withFnAsistencias)->get();
 
             return response()->json(
                 array(
-                    'status'        => 'Success',
-                    'title'         => null,
-                    'message'       => null,
-                    'asistencias'   => AsistenciaRecargaResource::collection($funcionario),
-                    'recarga'       => RecargaInUserResource::make($recarga)
+                    'status'            => 'Success',
+                    'title'             => null,
+                    'message'           => null,
+                    'asistencias'       => AsistenciaRecargaResource::collection($funcionario),
+                    'recarga'           => RecargaInUserResource::make($recarga)
                 )
             );
         } catch (\Exception $error) {
@@ -219,6 +229,26 @@ class RecargaFuncionarioController extends Controller
                     'title'     => null,
                     'message'   => null,
                     'reajustes'    => FuncionarioReajustesResource::collection($reajustes),
+                    'recarga'   => RecargaInUserResource::make($recarga)
+                )
+            );
+        } catch (\Exception $error) {
+            return response()->json($error->getMessage());
+        }
+    }
+
+    public function returnEsquemaFuncionario($codigo, $uuid)
+    {
+        try {
+            $funcionario          = User::where('uuid', $uuid)->firstOrFail();
+            $recarga              = Recarga::where('codigo', $codigo)->firstOrFail();
+            $esquema              = $funcionario->esquemas()->where('recarga_id', $recarga->id)->first();
+            return response()->json(
+                array(
+                    'status'    => 'Success',
+                    'title'     => null,
+                    'message'   => null,
+                    'esquema'   => EsquemaResource::make($esquema),
                     'recarga'   => RecargaInUserResource::make($recarga)
                 )
             );

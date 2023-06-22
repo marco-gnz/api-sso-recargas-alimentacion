@@ -2,8 +2,10 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Recarga;
 use Carbon\Carbon;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Auth;
 
 class RecargaResumenResource extends JsonResource
 {
@@ -16,61 +18,33 @@ class RecargaResumenResource extends JsonResource
 
     public function totalAusentismosGrupos($recarga)
     {
-        $ausentismos_all_grupo_uno    = [];
-        $ausentismos_all_grupo_dos    = [];
-        $ausentismos_all_grupo_tres   = [];
-        $reglas_recarga               = $recarga->reglas()->get()->unique('tipo_ausentismo_id');
-
-        foreach ($reglas_recarga as $regla) {
-            if ($regla->grupo_id === 1) {
-                $data_1 = (object) [
+        $ausentismos_all_grupo  = [];
+        $reglas                 = $recarga->whenLoaded('reglas');
+        $reglas                 = $reglas->unique('tipo_ausentismo_id');
+        if (count($reglas) > 0) {
+            foreach ($reglas as $regla) {
+                $data_grupo = (object) [
                     'id'      => $regla->tipoAusentismo->id,
                     'nombre'  => $regla->tipoAusentismo->nombre,
                     'sigla'   => strtolower($regla->tipoAusentismo->sigla)
                 ];
-                array_push($ausentismos_all_grupo_uno, $data_1);
-            } else if ($regla->grupo_id === 2) {
-                $data_2 = (object) [
-                    'id'      => $regla->tipoAusentismo->id,
-                    'nombre'  => $regla->tipoAusentismo->nombre,
-                    'sigla'   => strtolower($regla->tipoAusentismo->sigla)
-                ];
-                array_push($ausentismos_all_grupo_dos, $data_2);
-            }else if ($regla->grupo_id === 3) {
-                $data_3 = (object) [
-                    'id'      => $regla->tipoAusentismo->id,
-                    'nombre'  => $regla->tipoAusentismo->nombre,
-                    'sigla'   => strtolower($regla->tipoAusentismo->sigla)
-                ];
-                array_push($ausentismos_all_grupo_tres, $data_3);
+                array_push($ausentismos_all_grupo, $data_grupo);
             }
         }
 
-        $data_grupo_uno = (object) [
-            'nombre'                => '1',
-            'total_ausentismos'     => $recarga->ausentismos()->where('grupo_id', 1)->count(),
-            'data'                  => $ausentismos_all_grupo_uno
-        ];
+        return $ausentismos_all_grupo;
+    }
 
-        $data_grupo_dos = (object) [
-            'nombre'                => '2',
-            'total_ausentismos'     => $recarga->ausentismos()->where('grupo_id', 2)->count(),
-            'data'                  => $ausentismos_all_grupo_dos
-        ];
+    public function activePlublicar($recarga)
+    {
+        $usuario_auth       = Auth::user();
+        if ($recarga->last_status === 0 && $usuario_auth->hasRole(['ADMIN.SUPER', 'ADMIN.EJECUTIVO'])) {
+            return true;
+        } else if ($recarga->last_status === 1 && $usuario_auth->hasRole(['ADMIN.SUPER'])) {
+            return true;
+        }
 
-        $data_grupo_tres = (object) [
-            'nombre'                => '3',
-            'total_ausentismos'     => $recarga->ausentismos()->where('grupo_id', 3)->count(),
-            'data'                  => $ausentismos_all_grupo_tres
-        ];
-
-        $data = (object) [
-            'grupo_uno'      => $data_grupo_uno,
-            'grupo_dos'      => $data_grupo_dos,
-            'grupo_tres'     => $data_grupo_tres,
-        ];
-
-        return $data;
+        return false;
     }
 
     public function toArray($request)
@@ -86,6 +60,15 @@ class RecargaResumenResource extends JsonResource
 
         $monto_dia                          = $this->monto_dia != null ? number_format($this->monto_dia, 0, ",", ".") : null;
         $monto_estimado                     = $total_dias_habiles_beneficio * $this->monto_dia;
+
+        $total_pagado_query                 = $this->esquemas()->where('active', true)->sum('monto_total_cancelar');
+        $total_calculo_contrato_query       = $this->esquemas()->where('active', true)->sum('calculo_contrato');
+        $total_calculo_turno_query          = $this->esquemas()->where('active', true)->sum('calculo_turno');
+        $total_calculo_grupo_uno_query      = $this->esquemas()->where('active', true)->sum('calculo_grupo_uno');
+        $total_calculo_grupo_dos_query      = $this->esquemas()->where('active', true)->sum('calculo_grupo_dos');
+        $total_calculo_grupo_tres_query     = $this->esquemas()->where('active', true)->sum('calculo_grupo_tres');
+        $total_calculo_viaticos_query       = $this->esquemas()->where('active', true)->sum('calculo_viaticos');
+        $total_pagado                       = "$" . number_format($total_pagado_query, 0, ",", ".");
 
         return [
             'id'                            => $this->id,
@@ -106,12 +89,12 @@ class RecargaResumenResource extends JsonResource
             'n_funcionarios'                => 0,
             'n_funcionarios_vigentes'       => 0,
             'n_funcionarios_no_vigentes'    => 0,
-            'total_pagado'                  => 0,
+            'total_pagado'                  => $total_pagado,
             'last_estado'                   => $this->seguimiento()->latest()->with('estado')->first(),
             'date_created_user'             => $this->date_created_user,
             'date_updated_user'             => $this->date_updated_user,
             'disabled_reglas'               => $this->reglas()->count() > 0 ? true : false,
-            'users_count'                   => $this->users_count,
+            'users_count'                   => $this->esquemas_count,
             'reajustes_count'               => $this->reajustes_count,
             'contratos_count'               => $this->contratos_count,
             'viaticos_count'                => $this->viaticos_count,
@@ -119,13 +102,22 @@ class RecargaResumenResource extends JsonResource
             'asignaciones_count'            => $this->asignaciones_count,
             'total_grupos'                  => $this->totalAusentismosGrupos($this),
             'monto_total'                   => 0,
+            'last_status_value'             => $this->last_status,
+            'last_status'                   => Recarga::NOM_STATUS[$this->last_status],
+            'active_publicar'               => $this->activePlublicar($this),
 
-            'ausentismos'                   => AusentismosResource::collection($this->ausentismos),
+            /* 'ausentismos'                   => AusentismosResource::collection($this->ausentismos), */
             'establecimiento'               => $this->establecimiento,
             'seguimiento'                   => $this->seguimiento()->with('estado', 'userBy')->orderBy('created_at', 'DESC')->get(),
-            'reglas'                        => $this->reglas,
             'user_created_by'               => $this->userCreatedBy,
-            'user_update_by'                => $this->userUpdateBy
+            'user_update_by'                => $this->userUpdateBy,
+            'total_clp'                     => $this->total_clp ? number_format($this->total_clp, 0, ",", ".") : 0,
+            'total_calculo_contrato_query'  => $total_calculo_contrato_query,
+            'total_calculo_turno_query'         => $total_calculo_turno_query,
+            'total_calculo_grupo_uno_query'     => $total_calculo_grupo_uno_query,
+            'total_calculo_grupo_dos_query'     => $total_calculo_grupo_dos_query,
+            'total_calculo_grupo_tres_query'    => $total_calculo_grupo_tres_query,
+            'total_calculo_viaticos_query'      => $total_calculo_viaticos_query,
         ];
     }
 }

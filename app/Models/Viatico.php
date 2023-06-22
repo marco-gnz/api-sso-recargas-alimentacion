@@ -31,6 +31,7 @@ class Viatico extends Model
         'valor_viatico',
         'user_id',
         'recarga_id',
+        'esquema_id',
         'user_created_by',
         'date_created_user',
         'user_update_by',
@@ -45,6 +46,11 @@ class Viatico extends Model
     public function recarga()
     {
         return $this->belongsTo(Recarga::class, 'recarga_id');
+    }
+
+    public function esquema()
+    {
+        return $this->belongsTo(Esquema::class, 'esquema_id');
     }
 
     public function userCreatedBy()
@@ -83,6 +89,24 @@ class Viatico extends Model
             $viatico->total_dias_habiles_periodo    = ($days_diff_periodo - $days);
             $viatico->user_created_by       = Auth::user()->id;
             $viatico->date_created_user     = Carbon::now()->toDateTimeString();
+        });
+
+        static::created(function ($viatico) {
+            $feriados_count                                     = $viatico->recarga->feriados()->where('active', true)->whereBetween('fecha', [$viatico->fecha_inicio_periodo, $viatico->fecha_termino_periodo])->count();
+            $total                                              = $viatico->total_dias_habiles_periodo - $feriados_count;
+            $viatico->total_dias_habiles_periodo                = $total;
+            $viatico->save();
+        });
+
+        static::deleted(function ($viatico) {
+            if ($viatico->esquema) {
+                $viatico->esquema->total_dias_viaticos = 0;
+                $viatico->esquema->total_dias_habiles_viaticos = 0;
+                $viatico->esquema->total_dias_feriados_viaticos = 0;
+                $viatico->esquema->viaticos_n_registros = 0;
+                $viatico->esquema->calculo_viaticos = 0;
+                $viatico->esquema->save();
+            }
         });
     }
 

@@ -23,6 +23,7 @@ class Ausentismo extends Model
         'total_dias_ausentismo',
         'total_dias_ausentismo_periodo',
         'total_dias_habiles_ausentismo_periodo',
+        'total_dias_habiles_ausentismo_periodo_meridiano',
         'hora_inicio',
         'hora_termino',
         'total_horas_ausentismo',
@@ -37,6 +38,7 @@ class Ausentismo extends Model
         'cargo_id',
         'meridiano_id',
         'recarga_id',
+        'esquema_id',
         'user_created_by',
         'date_created_user',
         'user_update_by',
@@ -46,6 +48,11 @@ class Ausentismo extends Model
     public function recarga()
     {
         return $this->belongsTo(Recarga::class, 'recarga_id');
+    }
+
+    public function esquema()
+    {
+        return $this->belongsTo(Esquema::class, 'esquema_id');
     }
 
     public function funcionario()
@@ -93,6 +100,7 @@ class Ausentismo extends Model
         return $this->belongsTo(Meridiano::class, 'meridiano_id');
     }
 
+
     protected static function booted()
     {
         static::creating(function ($ausentismo) {
@@ -101,20 +109,64 @@ class Ausentismo extends Model
             $termino    = Carbon::parse($ausentismo->fecha_termino_periodo)->format('Y-m-d');
             for ($i = $inicio; $i <= $termino; $i++) {
                 $i_format       = Carbon::parse($i)->isWeekend();
-                if($i_format){
+                if ($i_format) {
                     $days++;
                 }
             }
 
-            $ausentismo->uuid                   = Str::uuid();
-            $ausentismo->user_created_by        = Auth::user()->id;
-            $ausentismo->date_created_user      = Carbon::now()->toDateTimeString();
-            $ausentismo->total_dias_habiles_ausentismo_periodo = ($ausentismo->total_dias_ausentismo_periodo - $days);
+            $ausentismo->uuid                                   = Str::uuid();
+            $ausentismo->user_created_by                        = Auth::user()->id;
+            $ausentismo->date_created_user                      = Carbon::now()->toDateTimeString();
+            $total_dias_habiles_ausentismo_periodo              = ($ausentismo->total_dias_ausentismo_periodo - $days);
+            $total_dias_habiles_ausentismo_periodo              = $total_dias_habiles_ausentismo_periodo <= 0 ? 0 : $total_dias_habiles_ausentismo_periodo;
+            $ausentismo->total_dias_habiles_ausentismo_periodo  = $total_dias_habiles_ausentismo_periodo;
+        });
+
+        static::created(function ($ausentismo) {
+            $feriados_count                                     = $ausentismo->recarga->feriados()->where('active', true)->whereBetween('fecha', [$ausentismo->fecha_inicio_periodo, $ausentismo->fecha_termino_periodo])->count();
+            $total                                              = $ausentismo->total_dias_habiles_ausentismo_periodo - $feriados_count;
+            $ausentismo->total_dias_habiles_ausentismo_periodo  = $total;
+            $ausentismo->save();
         });
 
         static::updating(function ($ausentismo) {
             $ausentismo->user_update_by    = Auth::user()->id;
             $ausentismo->date_updated_user = Carbon::now()->toDateTimeString();
+        });
+
+        static::deleted(function ($ausentismo) {
+            if ($ausentismo->esquema) {
+                $grupo_id = $ausentismo->grupo_id;
+
+                switch ($grupo_id) {
+                    case 1:
+                        $ausentismo->esquema->total_dias_grupo_uno = 0;
+                        $ausentismo->esquema->total_dias_habiles_grupo_uno = 0;
+                        $ausentismo->esquema->total_dias_feriados_grupo_uno = 0;
+                        $ausentismo->esquema->grupo_uno_n_registros = 0;
+                        $ausentismo->esquema->calculo_grupo_uno = 0;
+                        $ausentismo->esquema->save();
+                        break;
+
+                    case 2:
+                        $ausentismo->esquema->total_dias_grupo_dos = 0;
+                        $ausentismo->esquema->total_dias_habiles_grupo_dos = 0;
+                        $ausentismo->esquema->total_dias_feriados_grupo_dos = 0;
+                        $ausentismo->esquema->grupo_dos_n_registros = 0;
+                        $ausentismo->esquema->calculo_grupo_dos = 0;
+                        $ausentismo->esquema->save();
+                        break;
+
+                    case 3:
+                        $ausentismo->esquema->total_dias_grupo_tres = 0;
+                        $ausentismo->esquema->total_dias_habiles_grupo_tres = 0;
+                        $ausentismo->esquema->total_dias_feriados_grupo_tres = 0;
+                        $ausentismo->esquema->grupo_tres_n_registros = 0;
+                        $ausentismo->esquema->calculo_grupo_tres = 0;
+                        $ausentismo->esquema->save();
+                        break;
+                }
+            }
         });
     }
 
@@ -130,5 +182,12 @@ class Ausentismo extends Model
                         ->orWhere('nombre_completo', 'like', '%' . $input . '%');
                 });
             });
+    }
+
+    public function scopeTipoAusentismo($query, $ids)
+    {
+        if ($ids) {
+            return $query->whereIn('tipo_ausentismo_id', $ids);
+        }
     }
 }

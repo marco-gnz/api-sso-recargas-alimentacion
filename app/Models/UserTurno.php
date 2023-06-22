@@ -26,6 +26,7 @@ class UserTurno extends Model
         'recarga_id',
         'proceso_id',
         'calidad_id',
+        'esquema_id',
         'establecimiento_id',
         'unidad_id',
         'planta_id',
@@ -43,6 +44,11 @@ class UserTurno extends Model
     public function recarga()
     {
         return $this->belongsTo(Recarga::class, 'recarga_id');
+    }
+
+    public function esquema()
+    {
+        return $this->belongsTo(Esquema::class, 'esquema_id');
     }
 
     public function proceso()
@@ -91,6 +97,13 @@ class UserTurno extends Model
         static::updating(function ($recarga) {
             $recarga->user_update_by    = Auth::user()->id;
             $recarga->date_updated_user = Carbon::now()->toDateTimeString();
+        });
+
+        static::deleted(function ($asignacion) {
+            if ($asignacion->esquema) {
+                $asignacion->esquema->turno_asignacion = false;
+                $asignacion->esquema->save();
+            }
         });
     }
 

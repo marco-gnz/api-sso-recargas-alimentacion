@@ -37,6 +37,9 @@ class CreateViaticosTable extends Migration
             $table->foreign('recarga_id')->references('id')->on('recargas')->onDelete('cascade');
             $table->unsignedBigInteger('recarga_id')->nullable();
 
+            $table->foreign('esquema_id')->references('id')->on('esquemas');
+            $table->unsignedBigInteger('esquema_id')->nullable();
+
             $table->foreign('user_created_by')->references('id')->on('users');
             $table->unsignedBigInteger('user_created_by')->nullable();
             $table->dateTime('date_created_user', 0)->nullable();

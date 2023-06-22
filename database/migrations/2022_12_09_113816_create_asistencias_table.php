@@ -34,6 +34,9 @@ class CreateAsistenciasTable extends Migration
             $table->foreign('tipo_asistencia_turno_id')->references('id')->on('tipo_asistencia_turnos');
             $table->unsignedBigInteger('tipo_asistencia_turno_id')->nullable();
 
+            $table->foreign('esquema_id')->references('id')->on('esquemas');
+            $table->unsignedBigInteger('esquema_id')->nullable();
+
             $table->foreign('user_created_by')->references('id')->on('users');
             $table->unsignedBigInteger('user_created_by')->nullable();
             $table->dateTime('date_created_user', 0)->nullable();

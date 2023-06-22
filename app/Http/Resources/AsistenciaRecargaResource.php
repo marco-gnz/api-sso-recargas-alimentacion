@@ -118,7 +118,7 @@ class AsistenciaRecargaResource extends JsonResource
             'uuid'                  => $this->uuid,
             'rut_completo'          => $this->rut_completo,
             'nombres'               => $this->apellidos,
-            'asistencias_list'      => AsistenciaUniqueRecargaResource::collection($this->asistencias()->with('tipoAsistenciaTurno', 'funcionario')->get()),
+            'asistencias_list'      => AsistenciaUniqueRecargaResource::collection($this->whenLoaded('asistencias')),
             'total_asistencia'      => $this->totalTurnos($this)
         ];
     }

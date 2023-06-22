@@ -88,7 +88,7 @@ class UserTurnoImport implements WithValidation, ToCollection, WithHeadingRow
         $es_turnante = false;
         $pago_normal = ProcesoTurno::where('cod_sirh', $value)->orWhere('nombre', $value)->first();
 
-        if (($pago_normal->id === $proceso_id) && ($asignacion_tercer_turno > 0 && $asignacion_cuarto_turno > 0)) {
+        if (($pago_normal->id === $proceso_id) && ($asignacion_tercer_turno > 0 || $asignacion_cuarto_turno > 0)) {
             $es_turnante = true;
         }
 
@@ -136,6 +136,25 @@ class UserTurnoImport implements WithValidation, ToCollection, WithHeadingRow
         return $existe;
     }
 
+    public function existFuncionarioInRecarga($rut)
+    {
+        $existe         = false;
+        $funcionario    = User::where('rut_completo', $rut)->first();
+
+        if ($funcionario) {
+            $query_results = $this->recarga->whereHas('users', function ($query) use ($funcionario) {
+                $query->where('recarga_user.user_id', $funcionario->id);
+            })->whereHas('contratos', function ($query) use ($funcionario) {
+                $query->where('user_id', $funcionario->id);
+            })->count();
+
+            if ($query_results > 0) {
+                $existe = true;
+            }
+        }
+        return $existe;
+    }
+
     public function validateDuplicado($data)
     {
         $existe = false;
@@ -178,10 +197,13 @@ class UserTurnoImport implements WithValidation, ToCollection, WithHeadingRow
                 $validate_rut       = $this->validateRut($rut);
                 $validate_recarga   = $this->validateRecarga((int)$data[$this->anio_pago], $data[$this->mes_pago]);
                 $is_duplicado       = $this->validateDuplicado($data);
+                $exist_funcionario_in_recarga   = $this->existFuncionarioInRecarga($rut);
 
                 if (!$validate_rut) {
                     $validator->errors()->add($key, 'Rut incorrecto, por favor verificar. Verificado con Módulo 11.');
-                } else if (!$validate_recarga) {
+                } /* else if (!$exist_funcionario_in_recarga) {
+                    $validator->errors()->add($key, 'Funcionario no existe en recarga como vigente.');
+                }  */else if (!$validate_recarga) {
                     $message = "Registro debe ser en año {$this->recarga->anio_beneficio} y mes {$this->recarga->mes_beneficio}";
                     $validator->errors()->add($key, $message);
                 } else if ($is_duplicado) {

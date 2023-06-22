@@ -15,6 +15,8 @@ use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
 use App\Rules\EstablecimientoIsRecarga;
+use App\Http\Controllers\Admin\Calculos\ActualizarEsquemaController;
+use App\Http\Controllers\Admin\Esquema\EsquemaController;
 
 
 class UserTurnoImportStore implements ToModel, WithHeadingRow, WithValidation
@@ -37,6 +39,7 @@ class UserTurnoImportStore implements ToModel, WithHeadingRow, WithValidation
     }
 
     public $importados  = 0;
+    public $editados    = 0;
 
     public function headingRow(): int
     {
@@ -51,7 +54,9 @@ class UserTurnoImportStore implements ToModel, WithHeadingRow, WithValidation
             $proceso            = ProcesoTurno::where('cod_sirh', $row[$this->proceso])->orWhere('nombre', $row[$this->proceso])->first();
 
             if ($funcionario && $proceso) {
-                $turnante       = $this->validateTurno($proceso->id, $row[$this->asignacion_tercer_turno], $row[$this->asignacion_cuarto_turno]);
+                $esquema_controller = new EsquemaController;
+                $esquema            = $esquema_controller->returnEsquema($funcionario->id, $this->recarga->id);
+                $turnante           = $this->validateTurno($proceso->id, $row[$this->asignacion_tercer_turno], $row[$this->asignacion_cuarto_turno]);
                 $data = [
                     'folio'                             => $row[$this->folio] != null ? $row[$this->folio] : NULL,
                     'anio'                              => $this->recarga->anio_beneficio,
@@ -62,12 +67,16 @@ class UserTurnoImportStore implements ToModel, WithHeadingRow, WithValidation
                     'user_id'                           => $funcionario->id,
                     'recarga_id'                        => $this->recarga->id,
                     'proceso_id'                        => $proceso->id,
-                    'es_turnante'                       => $turnante
+                    'es_turnante'                       => $turnante,
+                    'esquema_id'                        => $esquema ? $esquema->id : NULL
                 ];
 
                 $turno = UserTurno::create($data);
 
                 if ($turno) {
+                    $cartola_controller = new ActualizarEsquemaController;
+                    $cartola_controller->updateEsquemaAsignaciones($funcionario, $this->recarga);
+
                     $this->importados++;
                     return $turno;
                 }
@@ -83,7 +92,7 @@ class UserTurnoImportStore implements ToModel, WithHeadingRow, WithValidation
         $es_turnante = false;
         $pago_normal = ProcesoTurno::where('cod_sirh', $value)->orWhere('nombre', $value)->first();
 
-        if (($pago_normal->id === $proceso_id) && ($asignacion_tercer_turno > 0 && $asignacion_cuarto_turno > 0)) {
+        if (($pago_normal->id === $proceso_id) && ($asignacion_tercer_turno > 0 || $asignacion_cuarto_turno > 0)) {
             $es_turnante = true;
         }
 
@@ -157,6 +166,25 @@ class UserTurnoImportStore implements ToModel, WithHeadingRow, WithValidation
         return $existe;
     }
 
+    public function existFuncionarioInRecarga($rut)
+    {
+        $existe         = false;
+        $funcionario    = User::where('rut_completo', $rut)->first();
+
+        if ($funcionario) {
+            $query_results = $this->recarga->whereHas('users', function ($query) use ($funcionario) {
+                $query->where('recarga_user.user_id', $funcionario->id);
+            })->whereHas('contratos', function ($query) use ($funcionario) {
+                $query->where('user_id', $funcionario->id);
+            })->count();
+
+            if ($query_results > 0) {
+                $existe = true;
+            }
+        }
+        return $existe;
+    }
+
     public function returnKeyFile($data)
     {
         $new_key  = "{$data[$this->rut]}_{$data[$this->folio]}_{$data[$this->proceso]}_{$data[$this->anio_pago]}_{$data[$this->mes_pago]}_{$data[$this->asignacion_tercer_turno]}_{$data[$this->bonificacion_asignacion_turno]}_{$data[$this->asignacion_cuarto_turno]}";
@@ -166,17 +194,20 @@ class UserTurnoImportStore implements ToModel, WithHeadingRow, WithValidation
     public function withValidator($validator)
     {
         $assoc_array = array();
-        $validator->after(function ($validator) use($assoc_array) {
+        $validator->after(function ($validator) use ($assoc_array) {
             foreach ($validator->getData() as $key => $data) {
                 $new_key            = $this->returnKeyFile($data);
                 $rut                = "{$data[$this->rut]}-{$data[$this->dv]}";
                 $validate_rut       = $this->validateRut($rut);
                 $validate_recarga   = $this->validateRecarga((int)$data[$this->anio_pago], $data[$this->mes_pago]);
                 $is_duplicado       = $this->validateDuplicado($data);
+                $exist_funcionario_in_recarga   = $this->existFuncionarioInRecarga($rut);
 
                 if (!$validate_rut) {
                     $validator->errors()->add($key, 'Rut incorrecto, por favor verificar. Verificado con Módulo 11.');
-                } else if (!$validate_recarga) {
+                } /* else if (!$exist_funcionario_in_recarga) {
+                    $validator->errors()->add($key, 'Funcionario no existe en recarga como vigente.');
+                } */ else if (!$validate_recarga) {
                     $message = "Registro debe ser en año {$this->recarga->anio_beneficio} y mes {$this->recarga->mes_beneficio}";
                     $validator->errors()->add($key, $message);
                 } else if ($is_duplicado) {

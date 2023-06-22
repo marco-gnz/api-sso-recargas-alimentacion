@@ -58,13 +58,12 @@ class AsistenciaImport implements ToCollection, WithHeadingRow, WithValidation
                     $turno_nocturno = 0;
                     $dia_libre      = 0;
                     $rut                = "{$row[$this->rut]}-{$row[$this->dv]}";
-                    $funcionario        = User::where('rut', $rut)->first();
+                    $funcionario        = User::where('rut_completo', $rut)->first();
                     $establecimiento    = Establecimiento::where('cod_sirh', $row[$this->cod_establecimiento])->first();
 
                     if ($funcionario && $establecimiento) {
-
                         $data = [
-                            'rut'                       => $funcionario->rut_completo,
+                            'rut_completo'              => $funcionario->rut_completo,
                             'nombres'                   => $funcionario->nombre_completo,
                             'establecimiento'           => $establecimiento->sigla
                         ];
@@ -159,28 +158,51 @@ class AsistenciaImport implements ToCollection, WithHeadingRow, WithValidation
     {
         $existe = false;
         $rut                = "{$data[$this->rut]}-{$data[$this->dv]}";
-        $funcionario        = User::where('rut', $rut)->first();
+        $funcionario        = User::where('rut_completo', $rut)->first();
         $establecimiento    = Establecimiento::where('cod_sirh', $data[$this->cod_establecimiento])->first();
 
-        foreach ($this->columnas as $key => $value) {
-            if (is_numeric($value)) {
-                $date = $this->transformDate($value);
+        if ($funcionario && $establecimiento) {
+            foreach ($this->columnas as $key => $value) {
+                if (is_numeric($value)) {
+                    $date = $this->transformDate($value);
 
-                $validate_1 = Asistencia::where('recarga_id', $this->recarga->id)
-                    ->where('establecimiento_id', $establecimiento->id)
-                    ->where('user_id', $funcionario->id)
-                    ->where('fecha', $date->format('Y-m-d'))
-                    ->first();
+                    $validate_1 = Asistencia::where('recarga_id', $this->recarga->id)
+                        ->where('establecimiento_id', $establecimiento->id)
+                        ->where('user_id', $funcionario->id)
+                        ->where('fecha', $date->format('Y-m-d'))
+                        ->first();
 
-                if ($validate_1) {
-                    $existe = true;
-                    $fecha = Carbon::parse($validate_1->fecha)->format('d/m');
-                    $message = "{$fecha} ya existe.";
-                    return array($existe, $message);
+                    if ($validate_1) {
+                        $existe = true;
+                        $fecha = Carbon::parse($validate_1->fecha)->format('d/m');
+                        $message = "{$fecha} ya existe.";
+                        return array($existe, $message);
+                    }
                 }
             }
         }
+
+
         return array($existe, null);
+    }
+
+    public function existFuncionarioInRecarga($rut)
+    {
+        $existe         = false;
+        $funcionario    = User::where('rut_completo', $rut)->first();
+
+        if ($funcionario) {
+            $query_results = $this->recarga->whereHas('users', function ($query) use ($funcionario) {
+                $query->where('recarga_user.user_id', $funcionario->id);
+            })->whereHas('contratos', function ($query) use ($funcionario) {
+                $query->where('user_id', $funcionario->id);
+            })->count();
+
+            if ($query_results > 0) {
+                $existe = true;
+            }
+        }
+        return $existe;
     }
 
     public function withValidator($validator)
@@ -191,9 +213,12 @@ class AsistenciaImport implements ToCollection, WithHeadingRow, WithValidation
                 $validate       = $this->validateRut($rut);
                 $exist_value    = $this->existValuesInDate($data);
                 $duplicado      = $this->dataDuplicate($data);
+                $exist_funcionario_in_recarga   = $this->existFuncionarioInRecarga($rut);
 
                 if (!$validate) {
                     $validator->errors()->add($key, 'Rut incorrecto, por favor verificar. Verificado con Módulo 11.');
+                } else if (!$exist_funcionario_in_recarga) {
+                    $validator->errors()->add($key, 'Funcionario no existe en recarga como vigente.');
                 } else if (!$exist_value[0]) {
                     $validator->errors()->add($key, $exist_value[1]);
                 } /* else if ($duplicado[0]) {

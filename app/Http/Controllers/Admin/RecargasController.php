@@ -5,11 +5,13 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\Recargas\StoreRecargaRequest;
 use App\Http\Requests\Admin\Recargas\UpdateDatosPrincipalesRecargaRequest;
+use App\Http\Resources\RecargaCargaDatosResource;
 use App\Http\Resources\RecargaResource;
 use App\Models\Recarga;
 use App\Models\SeguimientoRecarga;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class RecargasController extends Controller
 {
@@ -62,6 +64,7 @@ class RecargasController extends Controller
     {
         $with = [
             'seguimiento',
+            'feriados',
             'reglas.grupoAusentismo',
             'reglas.tipoAusentismo',
             'reglas.meridianos',
@@ -78,7 +81,21 @@ class RecargasController extends Controller
     public function returnRecargas()
     {
         try {
-            $recargas = Recarga::withCount('users')->withCount('ausentismos')->withCount('asignaciones')->withCount('reajustes')->withCount('contratos')->withCount('viaticos')->orderBy('anio_beneficio', 'asc')->orderBy('mes_beneficio', 'asc')->get();
+            $usuario_auth       = Auth::user();
+            $establecimientos   = $usuario_auth->establecimientos;
+            $recargas           = Recarga::where(function($query) use($establecimientos)  {
+                $query->whereIn('establecimiento_id', $establecimientos->pluck('id'));
+            })
+            ->withCount('users')
+                ->withCount('ausentismos')
+                ->withCount('asignaciones')
+                ->withCount('reajustes')
+                ->withCount('contratos')
+                ->withCount('viaticos')
+                ->withCount('esquemas')
+                ->orderBy('anio_beneficio', 'DESC')
+                ->orderBy('mes_beneficio', 'DESC')
+                ->get();
 
             return $this->successResponse(RecargaResource::collection($recargas), null, null, 200);
         } catch (\Exception $error) {
@@ -91,10 +108,45 @@ class RecargasController extends Controller
     {
         try {
             $with = $this->withRecarga();
-            $recarga = Recarga::where('codigo', $codigo)->with($with)->withCount('users')->withCount('ausentismos')->withCount('asignaciones')->withCount('reajustes')->withCount('contratos')->withCount('viaticos')->first();
+            $recarga = Recarga::where('codigo', $codigo)
+                ->with($with)
+                ->withCount('users')
+                ->withCount('ausentismos')
+                ->withCount('asignaciones')
+                ->withCount('reajustes')
+                ->withCount('contratos')
+                ->withCount('viaticos')
+                ->withCount('esquemas')
+                ->first();
 
             if ($recarga) {
                 return $this->successResponse(RecargaResource::make($recarga), null, null, 200);
+            } else {
+                return $this->errorResponse('No existen registros.', 404);
+            }
+        } catch (\Exception $error) {
+            return $error->getMessage();
+            /* return $this->errorResponse($error->getMessage(), 500); */
+        }
+    }
+
+    public function returnFindRecargaCargaDatos($codigo)
+    {
+        try {
+            $with = $this->withRecarga();
+            $recarga = Recarga::where('codigo', $codigo)
+                ->with($with)
+                ->withCount('users')
+                ->withCount('ausentismos')
+                ->withCount('asignaciones')
+                ->withCount('reajustes')
+                ->withCount('contratos')
+                ->withCount('viaticos')
+                ->withCount('esquemas')
+                ->first();
+
+            if ($recarga) {
+                return $this->successResponse(RecargaCargaDatosResource::make($recarga), null, null, 200);
             } else {
                 return $this->errorResponse('No existen registros.', 404);
             }
@@ -108,8 +160,7 @@ class RecargasController extends Controller
     public function storeRecarga(StoreRecargaRequest $request)
     {
         try {
-            $existe             = $this->validateDuplicateRecarga($request);
-
+            $existe = $this->validateDuplicateRecarga($request);
             if ($existe) {
                 return response()->json([
                     'errors' => ['data' => ['No es posible ingresar la recarga, existe un registro idéntico.']]
@@ -193,13 +244,14 @@ class RecargasController extends Controller
     private function validateDuplicateRecarga($request)
     {
         try {
-            $existe = false;
-            $fecha_beneficio = Carbon::parse($request->fecha_beneficio);
+            $existe              = false;
+            $tz                  = 'America/Santiago';
+            $fecha_beneficio     = Carbon::createFromDate($request->anio_beneficio, $request->mes_beneficio, '01', $tz);
 
             $recarga = Recarga::where('active', true)
                 ->where('establecimiento_id', $request->establecimiento_id)
-                ->where('anio_beneficio', $fecha_beneficio->format('Y'))
-                ->where('mes_beneficio', $fecha_beneficio->format('m'))
+                ->where('anio_beneficio', $request->anio_beneficio)
+                ->where('mes_beneficio', $request->mes_beneficio)
                 ->first();
 
             if ($recarga) {

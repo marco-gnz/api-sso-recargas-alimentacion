@@ -14,13 +14,12 @@ class GrupoAusentismoResource extends JsonResource
      */
     public function toArray($request)
     {
-
         return [
             'id'                => $this->id,
             'n_grupo'           => $this->n_grupo,
             'nombre'            => $this->nombre,
             'descripcion'       => $this->descripcion,
-            'total_ausentismos' => $this->ausentismos()->count()
+            'total_ausentismos' => $this->whenLoaded('ausentismos')->count()
         ];
     }
 }

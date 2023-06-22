@@ -26,18 +26,20 @@ class StoreReajusteRequest extends FormRequest
     public function rules()
     {
         return [
-            'recarga_codigo'        => ['required', 'exists:recargas,codigo'],
-            'user_id'               => ['required', 'exists:users,id'],
+            'esquema_id'            => ['required', 'exists:esquemas,id'],
             'fecha_inicio'          => ['required', 'date', 'before_or_equal:fecha_termino'],
             'fecha_termino'         => ['required', 'date', 'after_or_equal:fecha_inicio'],
+            'total_dias'            => ['required', 'numeric'],
+            'calculo_dias'          => ['required'],
             'incremento'            => ['required'],
             'tipo_reajuste'         => ['required'],
-            'valor_dia'             => ['required_if:tipo_reajuste,1', 'numeric', 'gt:0', 'min:0'],
-            'monto_ajuste'          => ['required_if:tipo_reajuste,1', 'numeric', new TipeValueNumberDays($this->incremento), new ValueNumberDays],
+            'valor_dia'             => ['required_if:tipo_reajuste,1', 'numeric'],
+            'monto_ajuste'          => ['required_if:tipo_reajuste,1', 'numeric'],
             'tipo_ausentismo_id'    => ['required_if:incremento,0'],
             'tipo_incremento_id'    => ['required_if:incremento,1'],
-            'dias'                  => ['required', 'numeric', new TipeValueNumberDays($this->incremento), new ValueNumberDays],
             'observacion'           => ['required', 'max:255'],
+            'advertencias'          => ['nullable'],
+            'errores'               => ['nullable']
         ];
     }
 
@@ -52,6 +54,8 @@ class StoreReajusteRequest extends FormRequest
             'fecha_termino.date'                => 'La :attribute debe ser una fecha válida',
             'fecha_termino.after_or_equal'      => 'La :attribute debe ser superior a fecha de inicio',
 
+            'total_dias'                        => 'El :attribute es obligatorio',
+
             'valor_dia.required_if'             => 'El :attribute es obligatorio',
             'valor_dia.numeric'                 => 'El :attribute debe ser numérico',
             'valor_dia.gt'                      => 'El :attribute no puede ser valor 0',
@@ -63,9 +67,6 @@ class StoreReajusteRequest extends FormRequest
 
             'tipo_incremento_id.required_if'    => 'El :attribute es obligatorio',
 
-            'dias.required'                     => 'El :attribute es obligatorio',
-            'dias.numeric'                      => 'El :attribute debe ser numérico',
-
             'observacion.required'              => 'La :attribute es obligatoria',
             'observacion.max'                   => 'La :attribute admite hasta :max caracteres',
         ];
@@ -76,10 +77,10 @@ class StoreReajusteRequest extends FormRequest
         return [
             'fecha_inicio'              => 'fecha inicio',
             'fecha_termino'             => 'fecha término',
+            'total_dias'                => 'total de días',
             'incremento'                => 'tipo de reajuste',
             'tipo_ausentismo_id'        => 'tipo de ausentismo',
             'tipo_incremento_id'        => 'tipo de incremento',
-            'dias'                      => 'días',
             'observacion'               => 'observación'
         ];
     }

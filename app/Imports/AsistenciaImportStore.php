@@ -12,14 +12,18 @@ use Carbon\Carbon;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithValidation;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
+use App\Http\Controllers\Admin\Calculos\ActualizarEsquemaController;
+use App\Http\Controllers\Admin\Esquema\EsquemaController;
 
 class AsistenciaImportStore implements ToModel, WithHeadingRow, WithValidation
 {
-    public function  __construct($recarga, $columnas, $row_columnas)
+    public function  __construct($recarga, $columnas, $row_columnas, $feriados)
     {
         $this->recarga                  = $recarga;
         $this->columnas                 = $columnas;
         $this->row_columnas             = $row_columnas;
+        $this->feriados                 = $feriados;
+
 
         $this->rut                      = $this->columnas[0];
         $this->dv                       = $this->columnas[1];
@@ -29,12 +33,41 @@ class AsistenciaImportStore implements ToModel, WithHeadingRow, WithValidation
         $this->turno_nocturno           = 'N';
         $this->dia_libre                = 'X';
     }
-    public $importados      = 0;
-    public $actualizados    = 0;
+    public $importados  = 0;
+    public $editados    = 0;
 
     public function headingRow(): int
     {
         return $this->row_columnas;
+    }
+
+    private function existeFechaEnFeriado($fecha)
+    {
+        $existe = false;
+
+        if (in_array($fecha, $this->feriados)) {
+            $existe = true;
+        }
+        return $existe;
+    }
+
+    private function existFechaEnContrato($funcionario, $fecha)
+    {
+        $existe = false;
+
+        $contratos = $funcionario->contratos()
+            ->where('recarga_id', $this->recarga->id)
+            ->where(function ($query) use ($fecha) {
+                $query->where('fecha_inicio_periodo', '<=', $fecha)
+                    ->where('fecha_termino_periodo', '>=', $fecha);
+            })
+            ->count();
+
+        if ($contratos > 0) {
+            $existe = true;
+        }
+
+        return $existe;
     }
 
     public function model(array $row)
@@ -45,13 +78,23 @@ class AsistenciaImportStore implements ToModel, WithHeadingRow, WithValidation
             $establecimiento    = Establecimiento::where('cod_sirh', $row[$this->cod_establecimiento])->first();
 
             if ($funcionario && $establecimiento) {
-
+                $esquema_controller = new EsquemaController;
+                $esquema            = $esquema_controller->returnEsquema($funcionario->id, $this->recarga->id);
+                $turno_largo                = 0;
+                $turno_nocturno             = 0;
+                $dias_libres                = 0;
+                $total_dias_feriados_turno  = 0;
+                $turno_largo_en_contrato    = 0;
+                $turno_nocturno_en_contrato = 0;
+                $dias_libres_en_contrato    = 0;
+                $total_dias_feriados_turno_en_periodo_contrato = 0;
 
                 foreach ($this->columnas as $key => $value) {
                     $data = [
                         'user_id'               => $funcionario->id,
                         'recarga_id'            => $this->recarga->id,
-                        'establecimiento_id'    => $establecimiento->id
+                        'establecimiento_id'    => $establecimiento->id,
+                        'esquema_id'            => $esquema ? $esquema->id : NULL
                     ];
 
                     if (is_numeric($value)) {
@@ -67,27 +110,73 @@ class AsistenciaImportStore implements ToModel, WithHeadingRow, WithValidation
                             $data['anio']                       = Carbon::parse($date->format('Y-m-d'))->format('Y');
                             $data['tipo_asistencia_turno_id']   = $tipo_asistencia_turno->id;
 
+
+
                             if (!$existe_asistencia[0]) {
                                 $asistencia = Asistencia::create($data);
                                 if ($asistencia) {
                                     $this->importados++;
                                 }
                             } else {
-                                $asistencia_existente = $existe_asistencia[1];
+                                $asistencia = $existe_asistencia[1];
 
                                 $update = false;
-                                if ($asistencia_existente->tipo_asistencia_turno_id != $tipo_asistencia_turno->id) {
-                                    $update = $asistencia_existente->update([
+                                if ($asistencia->tipo_asistencia_turno_id != $tipo_asistencia_turno->id) {
+                                    $update = $asistencia->update([
                                         'tipo_asistencia_turno_id'  => $tipo_asistencia_turno->id
                                     ]);
+
+                                    if ($update) {
+                                        $this->editados++;
+                                    }
                                 }
-                                if ($update) {
-                                    $this->actualizados++;
+                            }
+                            $existe_en_contrato = $this->existFechaEnContrato($funcionario, $asistencia->fecha);
+                            $existe_en_feriados = $this->existeFechaEnFeriado($asistencia->fecha);
+
+                            $nom = $asistencia->tipoAsistenciaTurno->nombre;
+                            if ($existe_en_contrato) {
+                                if ($nom === 'L') {
+                                    $turno_largo_en_contrato++;
+                                } else if ($nom === 'N') {
+                                    $turno_nocturno_en_contrato++;
+                                } else if ($nom === 'X') {
+                                    $dias_libres_en_contrato++;
                                 }
+
+                                if ($existe_en_feriados) {
+                                    $total_dias_feriados_turno_en_periodo_contrato++;
+                                }
+                            }
+
+                            if ($nom === 'L') {
+                                $turno_largo++;
+                            } else if ($nom === 'N') {
+                                $turno_nocturno++;
+                            } else if ($nom === 'X') {
+                                $dias_libres++;
+                            }
+                            if ($existe_en_feriados) {
+                                $total_dias_feriados_turno++;
                             }
                         }
                     }
                 }
+                $totales = (object) [
+                    'turno_largo'                                           => $turno_largo,
+                    'turno_nocturno'                                        => $turno_nocturno,
+                    'dias_libres'                                           => $dias_libres,
+                    'total_dias_feriados_turno'                             => $total_dias_feriados_turno,
+                    'turno_largo_en_contrato'                               => $turno_largo_en_contrato,
+                    'turno_nocturno_en_contrato'                            => $turno_nocturno_en_contrato,
+                    'dias_libres_en_contrato'                               => $dias_libres_en_contrato,
+                    'total_dias_feriados_turno_en_periodo_contrato'         => $total_dias_feriados_turno_en_periodo_contrato,
+                    'calculo_turno'                                         => $turno_largo_en_contrato + $turno_nocturno_en_contrato,
+                    'total_turno'                                           => $turno_largo + $turno_nocturno + $dias_libres
+                ];
+
+                $cartola_controller = new ActualizarEsquemaController;
+                $cartola_controller->updateEsquemaTurnos($funcionario, $this->recarga, $totales);
             }
         } catch (\Exception $error) {
             return $error->getMessage();
@@ -184,6 +273,25 @@ class AsistenciaImportStore implements ToModel, WithHeadingRow, WithValidation
         return array($existe, $message = null, null);
     }
 
+    public function existFuncionarioInRecarga($rut)
+    {
+        $existe         = false;
+        $funcionario    = User::where('rut_completo', $rut)->first();
+
+        if ($funcionario) {
+            $query_results = $this->recarga->whereHas('users', function ($query) use ($funcionario) {
+                $query->where('recarga_user.user_id', $funcionario->id);
+            })->whereHas('contratos', function ($query) use ($funcionario) {
+                $query->where('user_id', $funcionario->id);
+            })->count();
+
+            if ($query_results > 0) {
+                $existe = true;
+            }
+        }
+        return $existe;
+    }
+
     public function withValidator($validator)
     {
         $validator->after(function ($validator) {
@@ -191,9 +299,12 @@ class AsistenciaImportStore implements ToModel, WithHeadingRow, WithValidation
                 $rut        = "{$data[$this->rut]}-{$data[$this->dv]}";
                 $validate   = $this->validateRut($rut);
                 $exist_value = $this->existValuesInDate($data);
+                $exist_funcionario_in_recarga   = $this->existFuncionarioInRecarga($rut);
 
                 if (!$validate) {
                     $validator->errors()->add($key, 'Rut incorrecto, por favor verificar. Verificado con Módulo 11.');
+                } else if (!$exist_funcionario_in_recarga) {
+                    $validator->errors()->add($key, 'Funcionario no existe en recarga como vigente.');
                 } else if (!$exist_value[0]) {
                     $validator->errors()->add($key, $exist_value[1]);
                 }

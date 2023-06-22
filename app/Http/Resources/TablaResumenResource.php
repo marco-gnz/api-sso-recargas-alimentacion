@@ -3,370 +3,264 @@
 namespace App\Http\Resources;
 
 use App\Models\Ausentismo;
+use App\Models\Esquema;
+use Carbon\Carbon;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 
 class TablaResumenResource extends JsonResource
 {
-    public function totalDiasContratoDeCorrido($funcionario)
+    public function totalAusentismosGrupos($recarga, $funcionario)
     {
-        $total = 0;
-        $total = $funcionario->contratos()->sum('total_dias_contrato_periodo');
-        return $total;
-    }
-
-    public function totalDiasContratoHabiles($funcionario, $recarga)
-    {
-        $total          = 0;
-        $contratos      = $funcionario->contratos()->get();
-        $feriados_count = 0;
-
-        if (count($contratos) > 0) {
-            foreach ($contratos as $contrato) {
-                $feriados_count  += $recarga->feriados()->where('active', true)->whereBetween('fecha', [$contrato->fecha_inicio_periodo, $contrato->fecha_termino_periodo])->count();
-            }
-        }
-
-        $total = ($contratos->sum('total_dias_habiles_contrato_periodo') - $feriados_count);
-
-        return $total;
-    }
-
-    public function turnosFuncionarioInRecarga($funcionario)
-    {
-        $turnos = $funcionario->turnos()->get();
-
-        return $turnos;
-    }
-
-    public function totalGrupos($funcionario, $recarga)
-    {
-        $ausentismos_all_grupo_uno  = [];
-        $ausentismos_all_grupo_dos  = [];
-        $ausentismos_all_grupo_tres = [];
-
-        $reglas_recarga             = $recarga->reglas()->get()->unique('tipo_ausentismo_id');
-
-        foreach ($reglas_recarga as $regla) {
-            if ($regla->grupo_id === 1) {
-                $data_1 = [
+        $ausentismos_all_grupo  = [];
+        $reglas                 = $recarga->reglas;
+        $reglas                 = $reglas->unique('tipo_ausentismo_id');
+        if(count($reglas) > 0){
+            foreach ($reglas as $regla) {
+                $data_grupo = (object) [
+                    'id'            => $regla->tipoAusentismo->id,
                     'nombre'        => $regla->tipoAusentismo->nombre,
                     'sigla'         => strtolower($regla->tipoAusentismo->sigla),
-                    'total_dias'    => $funcionario->ausentismos()->where('grupo_id', 1)->where('tipo_ausentismo_id', $regla->tipoAusentismo->id)->sum('total_dias_ausentismo_periodo')
+                    'total_dias'    => $regla->ausentismos()->where('user_id', $funcionario->id)->where('tipo_ausentismo_id', $regla->tipoAusentismo->id)->sum('total_dias_ausentismo_periodo')
                 ];
-                array_push($ausentismos_all_grupo_uno, $data_1);
-            } else if ($regla->grupo_id === 2) {
-                $data_2 = [
-                    'nombre'        => $regla->tipoAusentismo->nombre,
-                    'sigla'         => strtolower($regla->tipoAusentismo->sigla),
-                    'total_dias'    => $funcionario->ausentismos()->where('grupo_id', 2)->where('tipo_ausentismo_id', $regla->tipoAusentismo->id)->sum('total_dias_ausentismo_periodo')
-                ];
-                array_push($ausentismos_all_grupo_dos, $data_2);
-            } else {
-                $data_3 = [
-                    'nombre'        => $regla->tipoAusentismo->nombre,
-                    'sigla'         => strtolower($regla->tipoAusentismo->sigla),
-                    'total_dias'    => $funcionario->ausentismos()->where('grupo_id', 3)->where('tipo_ausentismo_id', $regla->tipoAusentismo->id)->where('tiene_descuento', true)->sum('total_dias_ausentismo_periodo')
-                ];
-                array_push($ausentismos_all_grupo_tres, $data_3);
+                array_push($ausentismos_all_grupo, $data_grupo);
             }
         }
-        $grupo_uno = (object) [
-            'tipos_ausentismos'      => $ausentismos_all_grupo_uno,
-        ];
-        $grupo_dos = (object) [
-            'tipos_ausentismos'      => $ausentismos_all_grupo_dos,
-        ];
-        $grupo_tres = (object) [
-            'tipos_ausentismos'      => $ausentismos_all_grupo_tres,
-        ];
+        return $ausentismos_all_grupo;
 
-        $data = (object) [
-            'grupo_uno'      => $grupo_uno,
-            'grupo_dos'      => $grupo_dos,
-            'grupo_tres'     => $grupo_tres,
-        ];
-
-        return $data;
     }
 
-    public function asistenciasFuncionarioInRecarga($funcionario)
+    private function errorUno($esquema)
     {
-        $asistencias = $funcionario->asistencias()->where('tipo_asistencia_turno_id', 3)->get();
+        $is_error = false;
 
-        return $asistencias;
-    }
-
-    public function esTurnante($funcionario)
-    {
-        $es_turnante = false;
-
-        $turnos             = $this->turnosFuncionarioInRecarga($funcionario);
-        $total_turnos       = count($turnos);
-
-        $asistencias        = $this->asistenciasFuncionarioInRecarga($funcionario);
-        $total_asistencias  = count($asistencias);
-
-        $total_dias_contrato_periodo = $this->totalDiasContratoDeCorrido($funcionario);
-
-        if ($total_turnos > 0 && $total_asistencias > 0 && $total_dias_contrato_periodo > 0) {
-            $es_turnante = true;
+        $total_ausentismos = $esquema->grupo_uno_n_registros + $esquema->grupo_dos_n_registros + $esquema->grupo_tres_n_registros;
+        if ((!$esquema->active) && ($esquema->contrato_n_registros > 0 || $total_ausentismos > 0 || $esquema->viaticos_n_registros > 0)) {
+            $is_error = true;
         }
 
-        return $es_turnante;
+        return $is_error;
     }
 
-    public function ausentismosGrupo($funcionario, $id_grupo)
+    private function errores($error_uno)
     {
-        $total = $funcionario->ausentismos()->where('grupo_id', $id_grupo)->get();
-        return $total;
-    }
-
-    public function countDiasLibres($funcionario)
-    {
-        try {
-            $total  = count($this->asistenciasFuncionarioInRecarga($funcionario));
-
-            return $total;
-        } catch (\Exception $error) {
-            return $error->getMessage();
-        }
-    }
-
-    public function countDiasAsistencia($funcionario)
-    {
-        try {
-            $total_l = 0;
-            $total_n = 0;
-            $total_x = 0;
-
-            if (count($funcionario->asistencias)) {
-                foreach ($funcionario->asistencias as $asistencia) {
-                    $fecha      = $asistencia->fecha;
-                    if (($asistencia->tipoAsistenciaTurno) && ($asistencia->tipoAsistenciaTurno->nombre === 'L')) {
-                        $total_l += $funcionario->contratos()
-                            ->where(function ($query) use ($fecha) {
-                                $query->where('fecha_inicio_periodo', '<=', $fecha)
-                                    ->where('fecha_termino_periodo', '>=', $fecha);
-                            })
-                            ->count();
-                    } else if (($asistencia->tipoAsistenciaTurno) && ($asistencia->tipoAsistenciaTurno->nombre === 'N')) {
-                        $total_n += $funcionario->contratos()
-                            ->where(function ($query) use ($fecha) {
-                                $query->where('fecha_inicio_periodo', '<=', $fecha)
-                                    ->where('fecha_termino_periodo', '>=', $fecha);
-                            })
-                            ->count();
-                    } else if (($asistencia->tipoAsistenciaTurno) && ($asistencia->tipoAsistenciaTurno->nombre === 'X')) {
-                        $total_x += $funcionario->contratos()
-                            ->where(function ($query) use ($fecha) {
-                                $query->where('fecha_inicio_periodo', '<=', $fecha)
-                                    ->where('fecha_termino_periodo', '>=', $fecha);
-                            })
-                            ->count();
-                    }
-                }
-            }
-            $data = (object) [
-                'total_dx'      => $total_x,
-                'total_dl'      => $total_l,
-                'total_dn'      => $total_n,
-                'total_turno'   => ($total_l + $total_n)
+        $errores = [];
+        if ($error_uno) {
+            $new_error = (object) [
+                'code'          => 1,
+                'message'       => $response = Esquema::ERROR_NOM[1],
             ];
 
-            return $data;
-        } catch (\Exception $error) {
-            return $error->getMessage();
+            array_push($errores, $new_error);
         }
+        return $errores;
     }
 
-    public function totalGrupo($es_turnante, $funcionario, $id_grupo)
+    private function advertenciaUno($esquema)
     {
-        $total          = 0;
-        $ausentismos    = $this->ausentismosGrupo($funcionario, $id_grupo);
-        if ($es_turnante) {
-            $total = $ausentismos->sum('total_dias_ausentismo_periodo');
-        } else {
-            $total = $ausentismos->sum('total_dias_habiles_ausentismo_periodo');
+        $is_advertencia = false;
+
+        if ($esquema->fecha_alejamiento) {
+            $is_advertencia = true;
         }
 
-        $data = (object) [
-            'n_registros'      => count($ausentismos),
-            'total_dias'       => $total,
-        ];
-        return $data;
+        return $is_advertencia;
     }
 
-    public function totalDiasContratoCondition($es_turnante, $funcionario, $recarga)
+    private function advertenciaDos($esquema)
     {
-        $total = 0;
-        if ($es_turnante) {
-            $total = $this->totalDiasContratoDeCorrido($funcionario);
-        } else {
-            $total = $this->totalDiasContratoHabiles($funcionario, $recarga);
+        $is_advertencia = false;
+
+        if ($esquema->total_dias_cancelar <= 0) {
+            $is_advertencia = true;
         }
-        return $total;
+        return $is_advertencia;
     }
 
-    public function totalDiasCancelar($recarga, $es_turnante, $total_dias_contrato, $total_contrato_condition, $total_ausentismos, $dias_asistencia)
+    private function advertenciaTres($esquema)
     {
-        $total_dias = 0;
-        if ($total_dias_contrato < $recarga->total_dias_mes_beneficio) {
-            if ($es_turnante) {
-                $total_dias = ($dias_asistencia->total_turno - $total_ausentismos->total_dias_ausentismos);
-            } else {
-                $total_dias = ($total_contrato_condition - $total_ausentismos->total_dias_ausentismos);
+        $is_advertencia = false;
+
+        if ($esquema->monto_total_cancelar > $esquema->recarga->monto_estimado) {
+            $is_advertencia = true;
+        }
+        return $is_advertencia;
+    }
+
+    private function advertenciaCuatro($esquema)
+    {
+        $is_advertencia = false;
+
+        if (($esquema->monto_total_cancelar > $esquema->recarga->monto_estimado) && ($esquema->ajustes_dias_n_registros <= 0 && $esquema->ajustes_monto_n_registros <= 0)) {
+            $is_advertencia = true;
+        }
+        return $is_advertencia;
+    }
+
+    private function advertenciaCinco($esquema)
+    {
+        $is_advertencia = false;
+
+        if ($esquema->es_turnante === 1 || $esquema->es_turnante === 3) {
+            if ($esquema->total_dias_cancelar > $esquema->calculo_turno) {
+                $is_advertencia = true;
             }
-        } else {
-            if ($es_turnante) {
-                $total_dias = ($dias_asistencia->total_turno - $total_ausentismos->total_dias_ausentismos);
-            } else {
-                $total_dias = ($total_contrato_condition - $total_ausentismos->total_dias_ausentismos);
+        } else if ($esquema->es_turnante === 2) {
+            if ($esquema->total_dias_cancelar > $esquema->calculo_contrato) {
+                $is_advertencia = true;
             }
         }
-        $total_monto = ($total_dias * $recarga->monto_dia);
-        $total_monto = (int)$total_monto;
-
-        $data = (object) [
-            'total_dias_pagar'      => $total_dias,
-            'total_monto'           => $total_monto,
-            'total_monto_format'    => "$" . number_format($total_monto, 0, ",", ".")
-        ];
-
-        return $data;
+        return $is_advertencia;
     }
 
-    public function totalDiasViaticos($es_turnante, $funcionario, $recarga)
+    private function advertencias($adv_1, $adv_2, $adv_3, $adv_4, $adv_5)
     {
-        $n_registros    = 0;
-        $total_dias     = 0;
-        $viaticos       = $funcionario->viaticos()->get();
-        $n_registros    = count($viaticos);
-        if ($es_turnante) {
-            $total_dias     = $viaticos->where('valor_viatico', '>', 0)->sum('total_dias_periodo');
-        } else {
-            $total_dias     = $viaticos->where('valor_viatico', '>', 0)->sum('total_dias_habiles_periodo');
+        $advertencias = [];
+        if ($adv_1) {
+            $new_advertencia = (object) [
+                'code'          => 1,
+                'message'       => Esquema::ADVERTENCIA_NOM[1],
+            ];
+
+            array_push($advertencias, $new_advertencia);
         }
-        $total_dias         = (int)$total_dias;
-        $total_pago         = ($total_dias * $recarga->monto_dia);
-        $total_pago         = (int)$total_pago;
-        $data = (object) [
-            'n_registros'               => $n_registros,
-            'total_dias'                => $total_dias,
-            'total_descuento'           => $total_pago,
-            'total_descuento_format'    => "$" . number_format($total_pago, 0, ",", ".")
-        ];
-        return $data;
-    }
 
-    public function totalAjustesDias($funcionario, $recarga)
-    {
-        $ajustes        = $funcionario->reajustes()->where('tipo_reajuste', 0)->get();
+        if ($adv_2) {
+            $new_advertencia = (object) [
+                'code'          => 2,
+                'message'       => Esquema::ADVERTENCIA_NOM[2],
+            ];
 
-        $n_registros    = count($ajustes);
-        $total_dias     = $ajustes->where('last_status', 1)->sum('dias');
+            array_push($advertencias, $new_advertencia);
+        }
 
-        $total_monto    = ($total_dias * $recarga->monto_dia);
-        $total_monto    = (int)$total_monto;
-        $data           = (object) [
-            'n_registros'           => $n_registros,
-            'total_dias'            => $total_dias,
-            'total_monto'           => $total_monto,
-            'total_monto_format'    => "$" . number_format($total_monto, 0, ",", ".")
-        ];
+        if ($adv_3) {
+            $new_advertencia = (object) [
+                'code'          => 3,
+                'message'       => Esquema::ADVERTENCIA_NOM[3],
+            ];
 
-        return $data;
-    }
+            array_push($advertencias, $new_advertencia);
+        }
 
-    public function totalAjustesMontos($funcionario)
-    {
-        $total_monto    = 0;
-        $ajustes        = $funcionario->reajustes()->where('tipo_reajuste', 1)->get();
+        if ($adv_4) {
+            $new_advertencia = (object) [
+                'code'          => 4,
+                'message'       => Esquema::ADVERTENCIA_NOM[4],
+            ];
 
-        $n_registros    = count($ajustes);
-        $total_monto    = $ajustes->where('last_status', 1)->sum('monto_ajuste');
+            array_push($advertencias, $new_advertencia);
+        }
 
-        $data = (object) [
-            'n_registros'           => $n_registros,
-            'total_monto'           => $total_monto,
-            'total_monto_format'    => "$" . number_format($total_monto, 0, ",", ".")
-        ];
+        if ($adv_5) {
+            $new_advertencia = (object) [
+                'code'          => 5,
+                'message'       => Esquema::ADVERTENCIA_NOM[5],
+            ];
 
-        return $data;
+            array_push($advertencias, $new_advertencia);
+        }
+        return $advertencias;
     }
 
     public function toArray($request)
     {
 
-        $recarga                                    = $this->recargas->where('active', true)->first();
-        $beneficio_en_recarga                       = $recarga->pivot->beneficio ? true : false;
-        $es_turnante                                = $this->esTurnante($this);
+        $reglas = $this->recarga->reglas()->with('tipoAusentismo')->orderBy('id', 'desc')->get()->unique('tipo_ausentismo_id');
 
-        $total_dias_contrato                        = $this->totalDiasContratoDeCorrido($this);
-        $total_contrato_condition                   = $this->totalDiasContratoCondition($es_turnante, $this, $recarga);
+        $ausentismos_all_grupo_uno   = [];
+        $ausentismos_all_grupo_dos   = [];
+        $ausentismos_all_grupo_tres  = [];
 
-        $contratos                                  = (object) ['total_dias_contrato' => (int)$total_dias_contrato, 'total_dias_habiles_contrato' => (int)$total_contrato_condition];
+        foreach ($reglas as $regla) {
+            if ($regla->grupo_id === 1) {
+                $data = [
+                    'nombre' => $regla->tipoAusentismo->nombre,
+                    'sigla'  => strtolower($regla->tipoAusentismo->sigla),
+                    'total_dias' => DB::table('ausentismos')->where('recarga_id', $this->recarga->id)->where('user_id', $this->funcionario->id)->where('tipo_ausentismo_id', $regla->tipoAusentismo->id)->sum('total_dias_ausentismo_periodo')
+                ];
+                array_push($ausentismos_all_grupo_uno, $data);
+            } else if ($regla->grupo_id === 2) {
+                $data = (object) [
+                    'nombre' => $regla->tipoAusentismo->nombre,
+                    'sigla'  => strtolower($regla->tipoAusentismo->sigla),
+                    'total_dias' => DB::table('ausentismos')->where('recarga_id', $this->recarga->id)->where('user_id', $this->funcionario->id)->where('tipo_ausentismo_id', $regla->tipoAusentismo->id)->sum('total_dias_ausentismo_periodo')
+                ];
 
-        $total_grupo_uno                            = $this->totalGrupo($es_turnante, $this, 1);
-        $total_grupo_dos                            = $this->totalGrupo($es_turnante, $this, 2);
-        $total_grupo_tres                           = $this->totalGrupo($es_turnante, $this, 3);
+                array_push($ausentismos_all_grupo_dos, $data);
+            } else if ($regla->grupo_id === 3) {
+                $data = (object) [
+                    'nombre' => $regla->tipoAusentismo->nombre,
+                    'sigla'  => strtolower($regla->tipoAusentismo->sigla),
+                    'total_dias' => DB::table('ausentismos')->where('recarga_id', $this->recarga->id)->where('user_id', $this->funcionario->id)->where('tipo_ausentismo_id', $regla->tipoAusentismo->id)->sum('total_dias_ausentismo_periodo')
+                ];
+                array_push($ausentismos_all_grupo_tres, $data);
+            }
+        }
 
-        $dias_asistencia                           = $this->countDiasAsistencia($this);
-
-        $data_g_1 = (object) [
-            'n_registros'      => $total_grupo_uno->n_registros,
-            'total_dias'       => $total_grupo_uno->total_dias,
+        $monto_total_cancelar_data = (object) [
+            'monto_total_cancelar_value'      => $this->monto_total_cancelar,
+            'monto_total_cancelar_format'     => "$" . number_format($this->monto_total_cancelar, 0, ",", "."),
         ];
-        $data_g_2 = (object) [
-            'n_registros'      => $total_grupo_dos->n_registros,
-            'total_dias'       => $total_grupo_dos->total_dias,
-        ];
-        $data_g_3 = (object) [
-            'n_registros'      => $total_grupo_tres->n_registros,
-            'total_dias'       => $total_grupo_tres->total_dias,
-        ];
 
-        $total_ausentismos                          = (object) [
-            'total_dias_grupo_uno'                  => $data_g_1,
-            'total_dias_grupo_dos'                  => $data_g_2,
-            'total_dias_grupo_tres'                 => $data_g_3,
-            'total_dias_ausentismos'                => ($data_g_1->total_dias + $data_g_2->total_dias + $data_g_3->total_dias)
-        ];
-        $total_pago_normal                          = $this->totalDiasCancelar($recarga, $es_turnante, $total_dias_contrato, $total_contrato_condition, $total_ausentismos, $dias_asistencia);
-        $total_viaticos                             = $this->totalDiasViaticos($es_turnante, $this, $recarga);
-        $total_ajuste_de_dias                       = $this->totalAjustesDias($this, $recarga);
-        $total_ajustes_de_montos                    = $this->totalAjustesMontos($this);
+        $error_uno      = $this->errorUno($this);
+        $errores        = $this->errores($error_uno);
 
+        $adv_1          = $this->advertenciaUno($this);
+        $adv_2          = $this->advertenciaDos($this);
+        $adv_3          = $this->advertenciaTres($this);
+        $adv_4          = $this->advertenciaCuatro($this);
+        $adv_5          = $this->advertenciaCinco($this);
+        $advertencias   = $this->advertencias($adv_1, $adv_2, $adv_3, $adv_4, $adv_5);
 
-        $total_dias_cancelar                        = $total_pago_normal->total_dias_pagar - ($total_viaticos->total_dias + $total_ajuste_de_dias->total_dias);
-        $monto_total_cancelar_dias                  = $total_dias_cancelar * $recarga->monto_dia;
-
-        $monto_total_cancelar                       = ($monto_total_cancelar_dias + $total_ajustes_de_montos->total_monto);
-        $monto_total_cancelar_format                = "$" . number_format($monto_total_cancelar, 0, ",", ".");
-
-        $total                                      = (object) [
-            'total_dias_cancelar'                   => $total_dias_cancelar,
-            'monto_total_cancelar'                  => $monto_total_cancelar,
-            'monto_total_cancelar_format'           => $monto_total_cancelar_format
-        ];
         return [
-            'id'                                            => $this->id,
-            'uuid'                                          => $this->uuid,
-            'recarga_codigo'                                => $recarga ? $recarga->codigo : null,
-            'apellidos'                                     => $this->apellidos,
-            'rut_completo'                                  => $this->rut_completo,
-            'apellidos'                                     => $this->apellidos,
-            'nombre_completo'                               => $this->nombre_completo,
-            'beneficio'                                     => $beneficio_en_recarga,
-            'es_turnante'                                   => $es_turnante,
-            'contratos'                                     => $contratos,
-            'total_ausentismos'                             => $total_ausentismos,
-            'dias_asistencia'                               => $dias_asistencia,
-            'total_pago_normal'                             => $total_pago_normal,
-            'total_viaticos'                                => $total_viaticos,
-            'total_ajuste_de_dias'                          => $total_ajuste_de_dias,
-            'total_ajustes_de_montos'                       => $total_ajustes_de_montos,
-            'total'                                         => $total,
-            'grupos_de_ausentismos'                         => $this->totalGrupos($this, $recarga)
+            'id'                                                    => $this->id,
+            'uuid'                                                  => $this->uuid,
+            'tipo_ingreso'                                          => $this->tipo_ingreso ? true : false,
+            'fecha_alejamiento'                                     => $this->fecha_alejamiento ? true : false,
+            'beneficio'                                             => $this->active,
+            'es_remplazo'                                           => $this->es_remplazo ? true : false,
+            'turno_asignacion'                                      => $this->turno_asignacion ? true : false,
+            'es_turnante'                                           => (int)$this->es_turnante,
+            'es_turnante_type'                                      => $this->es_turnante === 1 ? 'warning' : ($this->es_turnante === 2 ? 'primary' : 'danger'),
+            'es_turnante_nombre'                                    => Esquema::TURNANTE_NOM[$this->es_turnante],
+            'es_turnante_value'                                     => $this->es_turnante_value ? true : false,
+            'total_dias_contrato'                                   => $this->calculo_contrato,
+            'contrato_n_registros'                                  => $this->contrato_n_registros,
+            'total_dias_turno_largo_en_periodo_contrato'            => $this->total_dias_turno_largo_en_periodo_contrato,
+            'total_dias_turno_nocturno_en_periodo_contrato'         => $this->total_dias_turno_nocturno_en_periodo_contrato,
+            'total_dias_libres_en_periodo_contrato'                 => $this->total_dias_libres_en_periodo_contrato,
+            'total_turno'                                           => $this->calculo_turno,
+            'total_dias_grupo_uno'              => $this->calculo_grupo_uno,
+            'total_dias_habiles_grupo_uno'      => $this->total_dias_habiles_grupo_uno,
+            'total_dias_feriados_grupo_uno'     => $this->total_dias_feriados_grupo_uno,
+            'grupo_uno_n_registros'             => $this->grupo_uno_n_registros,
+            'total_dias_grupo_dos'              => $this->calculo_grupo_dos,
+            'total_dias_habiles_grupo_dos'      => $this->total_dias_habiles_grupo_dos,
+            'total_dias_feriados_grupo_dos'     => $this->total_dias_feriados_grupo_dos,
+            'grupo_dos_n_registros'             => $this->grupo_dos_n_registros,
+            'total_dias_grupo_tres'             => $this->calculo_grupo_tres,
+            'total_dias_habiles_grupo_tres'     => $this->total_dias_habiles_grupo_tres,
+            'total_dias_feriados_grupo_tres'    => $this->total_dias_feriados_grupo_tres,
+            'grupo_tres_n_registros'            => $this->grupo_tres_n_registros,
+            'calculo_viaticos'                  => $this->calculo_viaticos,
+            'viaticos_n_registros'              => $this->viaticos_n_registros,
+            'calculo_dias_ajustes'              => $this->calculo_dias_ajustes,
+            'ajustes_dias_n_registros'          => $this->ajustes_dias_n_registros,
+            'total_monto_ajuste'                => number_format($this->total_monto_ajuste, 0, ",", "."),
+            'ajustes_monto_n_registros'         => $this->ajustes_monto_n_registros,
+            'funcionario_rut_completo'          => $this->funcionario ? $this->funcionario->funcionario_rut_completo : null,
+            'funcionario_nombre_completo'       => $this->funcionario ? $this->funcionario->nombre_completo : null,
+            'funcionario_nombre'                => $this->funcionario ? $this->funcionario->nombres : null,
+            'funcionario_apellidos'             => $this->funcionario ? $this->funcionario->apellidos : null,
+            'recarga_codigo'                    => $this->recarga ? $this->recarga->codigo : null,
+            'grupo_uno'                         => [],
+            'total_dias_cancelar'               => $this->total_dias_cancelar,
+            'monto_cancelar'                    => $monto_total_cancelar_data,
+            'ausentismos_grupo'                 => $this->totalAusentismosGrupos($this->recarga, $this->funcionario),
+            'errores'                           => $errores,
+            'advertencias'                      => $advertencias
         ];
     }
 }
