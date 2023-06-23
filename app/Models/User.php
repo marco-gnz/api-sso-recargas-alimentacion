@@ -142,12 +142,12 @@ class User extends Authenticatable
             $usuario->rut_completo          = $usuario->rut . '-' . $usuario->dv;
             $usuario->nombre_completo       = $usuario->nombres . ' ' . $usuario->apellidos;
             $usuario->password              = bcrypt($usuario->rut);
-            /* $usuario->usuario_add_id        = Auth::user()->id; */
+            $usuario->usuario_add_id        = optional(auth()->user())->id;
             $usuario->fecha_add             = Carbon::now()->toDateTimeString();
         });
 
         static::updating(function ($usuario) {
-            /* $usuario->usuario_update_id         = Auth::user()->id; */
+            $usuario->usuario_update_id         = Auth::user()->id;
             $usuario->fecha_update              = Carbon::now()->toDateTimeString();
         });
     }

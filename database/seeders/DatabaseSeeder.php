@@ -16,14 +16,14 @@ class DatabaseSeeder extends Seeder
     {
         DB::statement('SET FOREIGN_KEY_CHECKS=0;');
 
-        /* $this->call(UserSeeder::class);
+        $this->call(UserSeeder::class);
         $this->call(EstadosRecargaSeeder::class);
         $this->call(GruposAusentismosSeeder::class);
         $this->call(MeridianosSeeder::class);
         $this->call(PlantasSeeder::class);
         $this->call(HorasSeeder::class);
         $this->call(LeyesSeeder::class);
-        $this->call(EstablecimientosSeeder::class); */
+        $this->call(EstablecimientosSeeder::class);
         $this->call(RolesPermisosSeeder::class);
 
         DB::statement('SET FOREIGN_KEY_CHECKS=1;');
