@@ -81,12 +81,7 @@ class RecargasController extends Controller
     public function returnRecargas()
     {
         try {
-            $usuario_auth       = Auth::user();
-            $establecimientos   = $usuario_auth->establecimientos;
-            $recargas           = Recarga::where(function($query) use($establecimientos)  {
-                $query->whereIn('establecimiento_id', $establecimientos->pluck('id'));
-            })
-            ->withCount('users')
+            $recargas = Recarga::withCount('users')
                 ->withCount('ausentismos')
                 ->withCount('asignaciones')
                 ->withCount('reajustes')
@@ -100,7 +95,6 @@ class RecargasController extends Controller
             return $this->successResponse(RecargaResource::collection($recargas), null, null, 200);
         } catch (\Exception $error) {
             return $error->getMessage();
-            /* return $this->errorResponse($error->getMessage(), 500); */
         }
     }
 

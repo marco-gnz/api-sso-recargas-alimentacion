@@ -41,11 +41,18 @@ class FuncionariosController extends Controller
             $withContratos      = $this->withContratos();
             $withEsquemas       = $this->withEsquemas();
 
-            $funcionarios = User::whereHas('contratos', function ($q) use ($establecimientos) {
-                $q->whereIn('establecimiento_id', $establecimientos->pluck('id'));
-            })
-                ->with($withContratos)
-                ->with($withEsquemas)
+            if ($usuario_auth->hasRole(['ADMIN.JEFE-PERSONAL'])) {
+                $funcionarios = User::whereHas('contratos', function ($q) use ($establecimientos) {
+                    $q->whereIn('establecimiento_id', $establecimientos->pluck('id'));
+                })
+                    ->with($withContratos)
+                    ->with($withEsquemas);
+            } else {
+                $funcionarios = User::with($withContratos)
+                    ->with($withEsquemas);
+            }
+
+            $funcionarios = $funcionarios
                 ->input($request->input)
                 ->orderBy('apellidos', 'asc')
                 ->paginate(100);

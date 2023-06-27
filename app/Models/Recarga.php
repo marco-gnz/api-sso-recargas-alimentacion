@@ -174,6 +174,7 @@ class Recarga extends Model
             $recarga->total_dias_mes_calculo         = $total_dias_mes_calculo;
             $recarga->total_dias_laborales_calculo   = $total_dias_laborales_calculo;
             $recarga->total_dias_habiles_calculo     = $total_dias_laborales_calculo;
+            $recarga->last_status                    = 0;
 
             $recarga->user_created_by                = Auth::user()->id;
             $recarga->date_created_user              = Carbon::now()->toDateTimeString();

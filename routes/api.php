@@ -22,129 +22,7 @@ use App\Http\Resources\ApiUserResource;
 |
 */
 
-
-
-Route::get('/entre-fechas', function () {
-
-    $fecha_inicio_ausentismo    = '2023-01-15';
-    $hora_inicio_ausentismo     = '20:00:00';
-
-    $fecha_termino_ausentismo   = '2023-01-16';
-    $hora_termino_ausentismo    = '08:00:00';
-
-    $inicio_ausentismo = Carbon::parse();
-});
-
-Route::get('/get-ausentismos-with-tipo-dias', function () {
-    try {
-        $esquemas = Esquema::all();
-
-        foreach ($esquemas as $esquema) {
-            $es_turnante = $esquema->es_turnante != 2 ? true : false;
-
-            $esquema->update([
-                'es_turnante_value' => $es_turnante
-            ]);
-        }
-    } catch (\Exception $error) {
-        return $error->getMessage();
-    }
-});
-
-Route::get('/test-update-esquema', function () {
-    $funcionario    = User::find(6972);
-    $recarga        = Recarga::find(37);
-
-    $turno_largo                = 0;
-    $turno_nocturno             = 0;
-    $dias_libres                = 0;
-    $total_dias_feriados_turno  = 0;
-    $turno_largo_en_contrato    = 0;
-    $turno_nocturno_en_contrato = 0;
-    $dias_libres_en_contrato    = 0;
-    $total_dias_feriados_turno_en_periodo_contrato = 0;
-
-    $totales = (object) [
-        'turno_largo'                                           => $turno_largo,
-        'turno_nocturno'                                        => $turno_nocturno,
-        'dias_libres'                                           => $dias_libres,
-        'total_dias_feriados_turno'                             => $total_dias_feriados_turno,
-        'turno_largo_en_contrato'                               => $turno_largo_en_contrato,
-        'turno_nocturno_en_contrato'                            => $turno_nocturno_en_contrato,
-        'dias_libres_en_contrato'                               => $dias_libres_en_contrato,
-        'total_dias_feriados_turno_en_periodo_contrato'         => $total_dias_feriados_turno_en_periodo_contrato,
-        'calculo_turno'                                         => $turno_largo_en_contrato + $turno_nocturno_en_contrato,
-        'total_turno'                                           => $turno_largo + $turno_nocturno + $dias_libres
-    ];
-
-    $cartola_controller = new ActualizarEsquemaController;
-    $func = $cartola_controller->updateEsquemaTurnos($funcionario, $recarga, $totales);
-
-    return $func;
-});
-
-Route::get('/preg-replace-names', function () {
-    $users = User::all();
-    $updates = array();
-    foreach ($users as $user) {
-        $name_completo = $user->nombre_completo;
-        $cadena_limpia = preg_replace('/ {2,}/', ' ', $name_completo);
-
-        $update = $user->update(['nombre_completo' => $cadena_limpia]);
-    }
-});
-
-Route::get('/add-cartola', function () {
-
-    $user = App\Models\User::find(6742);
-    $ausentismos = $user->ausentismos()
-        ->where('recarga_id', 34)
-        ->where('grupo_id', 2)
-        ->get();
-
-    $total = 0;
-
-    foreach ($ausentismos as $ausentismo) {
-        $reglas = $ausentismo->regla->whereHas('meridianos', function ($query) use ($ausentismo) {
-            $query->where('meridiano_regla.meridiano_id', $ausentismo->meridiano_id)->where('meridiano_regla.active', true);
-        })->count();
-
-        if ($reglas > 0) {
-            $total += $ausentismo->total_dias_ausentismo_periodo;
-        }
-    }
-
-    return $total;
-});
-
-Route::get('/count', function () {
-
-    $days = 0;
-    $startDate = Carbon::parse("2023-01-22")->format('Y-m-d');
-    $endDate = Carbon::parse("2023-01-28")->format('Y-m-d');
-
-    for ($i = $startDate; $i <= $endDate; $i++) {
-        $i_format       = Carbon::parse($i)->isWeekend();
-        if ($i_format) {
-            $days++;
-        }
-    }
-
-
-
-    /* $days = $startDate->diffInDays(function (Carbon $date){
-        return $date->isWeekend();
-    }, $endDate); */
-
-    /* $days = $startDate->diffInWeekdays($endDate); */
-
-    return $days;
-});
-
-
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    $user = $request->user();
-    /* return response()->json(ApiUserResource::make($user)); */
     return response()->json(ApiUserResource::make(User::with(['roles.permissions', 'permissions'])->find(request()->user()->id)));
 });
 
@@ -155,7 +33,7 @@ Route::post('/logout', [App\Http\Controllers\Auth\LogoutController::class, 'logo
 Route::group(
     [
         'namespace'     => 'Admin',
-        /* 'middleware'    => 'auth:sanctum' */
+        'middleware'    => 'auth:sanctum'
     ],
     function () {
         Route::get('/admin/days-in-date', [App\Http\Controllers\Admin\Modulos\ModulosResponseController::class, 'returnDaysInDate']);
@@ -299,7 +177,7 @@ Route::group(
 Route::group(
     [
         'namespace'     => 'Recarga',
-        /* 'middleware'    => 'auth:sanctum' */
+        'middleware'    => 'auth:sanctum'
     ],
     function () {
         Route::get('/admin/recarga/{uuid}/resumen/publicar', [StatusRecargaController::class, 'publicarRecarga']);
@@ -311,11 +189,6 @@ Route::group(
         Route::post('/admin/recarga/{uuid}/emails/send', [StatusRecargaController::class, 'sendEmailsCartola']);
     }
 );
-
-
-/* Route::group(['middleware' => ['cors']], function () {
-    Route::post('/admin/recargas/recarga/masivo/funcionarios/import', [App\Http\Controllers\Admin\RecargasFilesController::class, 'storeAllFuncionarios']);
-}); */
 
 Route::get('/debug-sentry', function () {
     throw new Exception('Prueba Alimentación API - Error');

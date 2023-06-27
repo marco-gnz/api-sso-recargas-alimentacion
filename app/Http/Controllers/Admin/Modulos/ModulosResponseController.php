@@ -123,7 +123,7 @@ class ModulosResponseController extends Controller
 
             foreach ($grupos as $grupo) {
                 $n_grupo = (int)$grupo->n_grupo;
-                if ($n_grupo=== 1) {
+                if ($n_grupo === 1) {
                     $total = $recarga->ausentismos()->where('grupo_id', 3)->count();
                     if ($total > 0) {
                         array_push($new_grupos, $grupo);
@@ -240,18 +240,23 @@ class ModulosResponseController extends Controller
                     array_push($feriados, $f);
                 }
             }
+
             if (count($feriados) > 0) {
                 $fechas                     = collect($feriados)->pluck('fecha');
                 $feriados_recarga_query     = $recarga->feriados()->whereIn('fecha', $fechas)->get();
 
                 if (count($feriados_recarga_query) > 0) {
                     $feriados_recarga_query = $feriados_recarga_query->pluck('fecha')->toArray();
-                    $feriados_recarga = $feriados_recarga_query;
+                    $feriados_recarga       = $feriados_recarga_query;
+                } else {
+                    $feriados_recarga_query = [];
+                    $feriados_recarga       = [];
                 }
 
-                if ($feriados) {
+
+                if (count($feriados) > 0) {
                     foreach ($feriados as $feriado) {
-                        if (($feriado) && (!in_array($feriado->fecha, $feriados_recarga))) {
+                        if (isset($feriado['fecha']) && !in_array($feriado['fecha'], $feriados_recarga)) {
                             array_push($new_feriados, $feriado);
                         }
                     }
@@ -266,18 +271,17 @@ class ModulosResponseController extends Controller
     private function feriadosFechaCalculo($recarga)
     {
         try {
-            $feriados = [];
-            $url      = "https://apis.digital.gob.cl/fl/feriados/{$recarga->anio_calculo}/{$recarga->mes_calculo}";
-            $api      = Http::get($url);
-            define('API_1', $api);
+            $feriados       = [];
+            $url            = "https://apis.digital.gob.cl/fl/feriados/{$recarga->anio_calculo}/{$recarga->mes_calculo}";
+            $api            = Http::get($url);
+            $apiResponse    = $api->body();
 
-            $feriados        = $api->object();
-            if ($feriados) {
-                $feriados        = collect($feriados);
-                $feriados        = $feriados->toArray();
-                define('FERIADOS_1', json_encode($feriados));
+            $feriados = json_decode($apiResponse, true, 512, JSON_UNESCAPED_UNICODE);
+            if (is_array($feriados)) {
+                return $feriados;
+            } else {
+                return [];
             }
-            return $feriados;
         } catch (\Error $error) {
             return $error->getMessage();
         }
@@ -286,27 +290,17 @@ class ModulosResponseController extends Controller
     private function feriadosFechaBeneficio($recarga)
     {
         try {
-            $feriados  = [];
-            $url       = "https://apis.digital.gob.cl/fl/feriados/{$recarga->anio_beneficio}/{$recarga->mes_beneficio}";
-            $api       = Http::get($url);
-            define('API_2', $api);
+            $feriados       = [];
+            $url            = "https://apis.digital.gob.cl/fl/feriados/{$recarga->anio_beneficio}/{$recarga->mes_beneficio}";
+            $api            = Http::get($url);
+            $apiResponse    = $api->body();
 
-            $feriados        = $api->object();
-            if (($feriados) && (is_array($feriados))) {
-                $feriados        = collect($feriados);
-                if ($feriados) {
-                    $feriados        = $feriados->toArray();
-                    define('FERIADOS_2', json_encode($feriados));
-                }
+            $feriados = json_decode($apiResponse, true, 512, JSON_UNESCAPED_UNICODE);
+            if (is_array($feriados)) {
+                return $feriados;
+            } else {
+                return [];
             }
-
-            /* $feriados        = $api->object();
-            if (($feriados) && (count($feriados))) {
-                $feriados        = collect($feriados);
-                $feriados        = $feriados->toArray();
-                define('FERIADOS_2', json_encode($feriados));
-            } */
-            return $feriados;
         } catch (\Error $error) {
             return $error->getMessage();
         }

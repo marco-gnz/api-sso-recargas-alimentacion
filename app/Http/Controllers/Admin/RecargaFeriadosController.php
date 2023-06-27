@@ -57,12 +57,12 @@ class RecargaFeriadosController extends Controller
                         }
                     } else {
                         $fecha  = Carbon::parse($feriado['fecha']);
-                        $data   = [
+                        $data = [
                             'nombre'            => $feriado['nombre'],
                             'observacion'       => $feriado['observacion'] ? $feriado['observacion'] : NULL,
-                            'anio'              => $fecha ? (int)$fecha->format('Y') : NULL,
-                            'mes'               => $fecha ? (int)$fecha->format('m') : NULL,
-                            'fecha'             => $fecha ? (int)$fecha->format('Y-m-d') : NULL,
+                            'anio'              => $fecha ? $fecha->format('Y') : NULL,
+                            'mes'               => $fecha ? $fecha->format('m') : NULL,
+                            'fecha'             => $fecha ? $fecha->format('Y-m-d') : NULL,
                             'irrenunciable'     => $feriado['irrenunciable'] ? true : false,
                             'tipo'              => $feriado['tipo'] ? $feriado['tipo'] : NULL,
                         ];
