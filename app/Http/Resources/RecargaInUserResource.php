@@ -21,9 +21,9 @@ class RecargaInUserResource extends JsonResource
 
         return [
             'anio_beneficio'                => $this->anio_beneficio,
-            'mes_beneficio'                 => Carbon::createFromDate($this->anio_beneficio,$this->mes_beneficio, '01', $tz)->formatLocalized('%B'),
+            'mes_beneficio'                 => Carbon::createFromDate($this->anio_beneficio,$this->mes_beneficio, '01', $tz)->locale('es')->monthName,
             'anio_calculo'                  => $this->anio_calculo,
-            'mes_calculo'                   => Carbon::createFromDate($this->anio_calculo,$this->mes_calculo, '01', $tz)->formatLocalized('%B'),
+            'mes_calculo'                   => Carbon::createFromDate($this->anio_calculo,$this->mes_calculo, '01', $tz)->locale('es')->monthName,
             'establecimiento'               => $this->establecimiento ? $this->establecimiento->sigla : null
         ];
     }

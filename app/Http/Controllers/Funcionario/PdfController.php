@@ -443,9 +443,9 @@ class PdfController extends Controller
 
                 $titulo_cartola = (object) [
                     'anio_beneficio'        => $esquema->recarga->anio_beneficio,
-                    'mes_beneficio'         => strtoupper(Carbon::createFromDate($esquema->recarga->anio_beneficio, $esquema->recarga->mes_beneficio, '01', $tz)->formatLocalized('%B')),
+                    'mes_beneficio'         => strtoupper(Carbon::createFromDate($esquema->recarga->anio_beneficio, $esquema->recarga->mes_beneficio, '01', $tz)->locale('es')->monthName),
                     'anio_calculo'          => $esquema->recarga->anio_calculo,
-                    'mes_calculo'           => strtoupper(Carbon::createFromDate($esquema->recarga->anio_calculo, $esquema->recarga->mes_calculo, '01', $tz)->formatLocalized('%B')),
+                    'mes_calculo'           => strtoupper(Carbon::createFromDate($esquema->recarga->anio_calculo, $esquema->recarga->mes_calculo, '01', $tz)->locale('es')->monthName),
                     'monto_dia'             => "$" . number_format($esquema->recarga->monto_dia, 0, ",", "."),
                     'fecha_emision'         => $fecha_emision ? Carbon::parse($fecha_emision->created_at)->format('d-m-Y') : null,
                     'establecimiento'       => $esquema->recarga->establecimiento ? $esquema->recarga->establecimiento->nombre : null

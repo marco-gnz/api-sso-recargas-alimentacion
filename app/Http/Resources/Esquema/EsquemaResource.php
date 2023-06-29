@@ -197,9 +197,9 @@ class EsquemaResource extends JsonResource
             'recarga_codigo'                                        => $this->recarga->codigo,
             'recarga_establecimiento'                               => $this->recarga->establecimiento->sigla,
             'recarga_anio_beneficio'                                => $this->recarga->anio_beneficio,
-            'recarga_mes_beneficio'                                 => Carbon::createFromDate($this->recarga->anio_beneficio, $this->recarga->mes_beneficio, '01', $tz)->formatLocalized('%B'),
+            'recarga_mes_beneficio'                                 => Carbon::createFromDate($this->recarga->anio_beneficio, $this->recarga->mes_beneficio, '01', $tz)->locale('es')->monthName,
             'recarga_anio_calculo'                                  => $this->recarga->anio_calculo,
-            'recarga_mes_calculo'                                   => Carbon::createFromDate($this->recarga->anio_calculo, $this->recarga->mes_calculo, '01', $tz)->formatLocalized('%B'),
+            'recarga_mes_calculo'                                   => Carbon::createFromDate($this->recarga->anio_calculo, $this->recarga->mes_calculo, '01', $tz)->locale('es')->monthName,
             'last_status_value'                                     => $this->recarga->last_status,
 
             'beneficio'                                             => $this->active,

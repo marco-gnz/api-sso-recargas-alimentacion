@@ -22,7 +22,7 @@ class EsquemasResource extends JsonResource
         return [
             'uuid'              => $this->uuid,
             'anio_beneficio'    => $this->recarga->anio_beneficio,
-            'mes_beneficio'     => Carbon::createFromDate($this->recarga->anio_beneficio,$this->recarga->mes_beneficio, '01', $tz)->formatLocalized('%B'),
+            'mes_beneficio'     => Carbon::createFromDate($this->recarga->anio_beneficio,$this->recarga->mes_beneficio, '01', $tz)->locale('es')->monthName,
             'beneficio'         => $this->active ? 'Con beneficio' : 'Sin beneficio',
             'establecimiento'   => $this->recarga->establecimiento->nombre
 
