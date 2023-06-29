@@ -174,7 +174,7 @@ class EsquemasPlanillaExport implements FromQuery, WithMapping, WithHeadings, Wi
             ->join('users', 'esquemas.user_id', '=', 'users.id')
             ->where('esquemas.recarga_id', $this->id_recarga)
             ->where('esquemas.active', true)
-            /* ->where('esquemas.monto_total_cancelar', '>', 0) */
+            ->where('esquemas.monto_total_cancelar', '>', 0)
             ->select($this->campos_slug)
             ->orderBy('monto_total_cancelar', 'ASC');
     }
