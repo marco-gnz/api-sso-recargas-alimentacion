@@ -192,11 +192,7 @@ class AsistenciaImport implements ToCollection, WithHeadingRow, WithValidation
         $funcionario    = User::where('rut_completo', $rut)->first();
 
         if ($funcionario) {
-            $query_results = $this->recarga->whereHas('users', function ($query) use ($funcionario) {
-                $query->where('recarga_user.user_id', $funcionario->id);
-            })->whereHas('contratos', function ($query) use ($funcionario) {
-                $query->where('user_id', $funcionario->id);
-            })->count();
+            $query_results = $this->recarga->esquemas()->where('user_id', $funcionario->id)->count();
 
             if ($query_results > 0) {
                 $existe = true;

@@ -13,6 +13,7 @@ use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithValidation;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use App\Http\Controllers\Admin\Esquema\EsquemaController;
+use Illuminate\Support\Facades\Log;
 
 class GrupoTresImportStore implements ToModel, WithHeadingRow, WithValidation
 {
@@ -59,75 +60,79 @@ class GrupoTresImportStore implements ToModel, WithHeadingRow, WithValidation
 
     public function model(array $row)
     {
-        $rut                = "{$row[$this->rut]}-{$row[$this->dv]}";
-        $funcionario        = User::where('rut', $rut)->first();
-        $tipo_ausentismo    = TipoAusentismo::where('nombre', $row[$this->nombre_tipo_ausentismo])->first();
+        try {
+            $rut                = "{$row[$this->rut]}-{$row[$this->dv]}";
+            $funcionario        = User::where('rut', $rut)->first();
+            $tipo_ausentismo    = TipoAusentismo::where('nombre', $row[$this->nombre_tipo_ausentismo])->first();
 
-        if ($funcionario && $tipo_ausentismo) {
-            $esquema_controller     = new EsquemaController;
-            $esquema                = $esquema_controller->returnEsquema($funcionario->id, $this->recarga->id);
+            if ($funcionario && $tipo_ausentismo) {
+                $esquema_controller     = new EsquemaController;
+                $esquema                = $esquema_controller->returnEsquema($funcionario->id, $this->recarga->id);
 
-            $hora_inicio            = Carbon::parse($this->transformTime($row[$this->hora_inicio]));
-            $hora_termino           = Carbon::parse($this->transformTime($row[$this->hora_termino]));
-            $hora_inicio_request    = Carbon::parse($this->transformTime($row[$this->hora_inicio]));
-            $hora_termino_request   = Carbon::parse($this->transformTime($row[$this->hora_termino]));
-            $hora_inicio_request    = $hora_inicio_request->format('H:i:s');
-            $hora_termino_request   = $hora_termino_request->format('H:i:s');
+                $hora_inicio            = Carbon::parse($this->transformTime($row[$this->hora_inicio]));
+                $hora_termino           = Carbon::parse($this->transformTime($row[$this->hora_termino]));
+                $hora_inicio_request    = Carbon::parse($this->transformTime($row[$this->hora_inicio]));
+                $hora_termino_request   = Carbon::parse($this->transformTime($row[$this->hora_termino]));
+                $hora_inicio_request    = $hora_inicio_request->format('H:i:s');
+                $hora_termino_request   = $hora_termino_request->format('H:i:s');
 
-            $turnante = $esquema ? ($esquema->es_turnante != 2 ? true : false) : false;
-            $regla    = Regla::where('tipo_ausentismo_id', $tipo_ausentismo->id)
-                ->where('turno_funcionario', $turnante)
-                ->where('recarga_id', $this->recarga->id)
-                ->whereHas('horarios', function ($query) use ($hora_inicio_request, $hora_termino_request) {
-                    $query->where(function ($subQuery) use ($hora_inicio_request, $hora_termino_request) {
-                        $subQuery->where([
-                            ['hora_inicio', '>', $hora_inicio_request],
-                            ['hora_inicio', '<', $hora_termino_request],
-                        ])->orWhere([
-                            ['hora_termino', '>', $hora_inicio_request],
-                            ['hora_termino', '<', $hora_termino_request],
-                        ])->orWhere([
-                            ['hora_inicio', '>=', $hora_inicio_request],
-                            ['hora_termino', '<=', $hora_termino_request],
-                        ]);
-                    });
-                })
-                ->first();
+                $turnante = $esquema ? ($esquema->es_turnante != 2 ? true : false) : false;
+                $regla    = Regla::where('tipo_ausentismo_id', $tipo_ausentismo->id)
+                    ->where('turno_funcionario', $turnante)
+                    ->where('recarga_id', $this->recarga->id)
+                    ->whereHas('horarios', function ($query) use ($hora_inicio_request, $hora_termino_request) {
+                        $query->where(function ($subQuery) use ($hora_inicio_request, $hora_termino_request) {
+                            $subQuery->where([
+                                ['hora_inicio', '>', $hora_inicio_request],
+                                ['hora_inicio', '<', $hora_termino_request],
+                            ])->orWhere([
+                                ['hora_termino', '>', $hora_inicio_request],
+                                ['hora_termino', '<', $hora_termino_request],
+                            ])->orWhere([
+                                ['hora_inicio', '>=', $hora_inicio_request],
+                                ['hora_termino', '<=', $hora_termino_request],
+                            ]);
+                        });
+                    })
+                    ->first();
 
-            $fecha_inicio           = Carbon::parse($this->transformDate($row[strtolower($this->fecha_inicio)]));
-            $fecha_termino          = Carbon::parse($this->transformDate($row[strtolower($this->fecha_termino)]));
-            $calculo                = $this->totalDiasEnPeriodo($fecha_inicio->format('d-m-Y'), $fecha_termino->format('d-m-Y'));
+                $fecha_inicio           = Carbon::parse($this->transformDate($row[strtolower($this->fecha_inicio)]));
+                $fecha_termino          = Carbon::parse($this->transformDate($row[strtolower($this->fecha_termino)]));
+                $calculo                = $this->totalDiasEnPeriodo($fecha_inicio->format('d-m-Y'), $fecha_termino->format('d-m-Y'));
 
 
-            $diff_hours = $hora_inicio->floatDiffInHours($hora_termino);
+                $diff_hours = $hora_inicio->floatDiffInHours($hora_termino);
 
-            $data = [
-                'fecha_inicio'                                      => $calculo[1] != null ? Carbon::parse($calculo[1])->format('Y-m-d') : NULL,
-                'fecha_termino'                                     => $calculo[2] != null ? Carbon::parse($calculo[2])->format('Y-m-d') : NULL,
-                'fecha_inicio_periodo'                              => $calculo[4] != null ? Carbon::parse($calculo[4])->format('Y-m-d') : NULL,
-                'fecha_termino_periodo'                             => $calculo[5] != null ? Carbon::parse($calculo[5])->format('Y-m-d') : NULL,
-                'total_dias_ausentismo'                             => $calculo[0],
-                'total_dias_ausentismo_periodo'                     => $calculo[3],
-                'hora_inicio'                                       => $hora_inicio->format('H:i:s'),
-                'hora_termino'                                      => $hora_termino->format('H:i:s'),
-                'total_horas_ausentismo'                            => $diff_hours,
-                'user_id'                                           => $funcionario->id,
-                'tipo_ausentismo_id'                                => $tipo_ausentismo->id,
-                'regla_id'                                          => $regla ? $regla->id : null,
-                'grupo_id'                                          => $regla ? $regla->grupoAusentismo->id : 3,
-                'recarga_id'                                        => $this->recarga->id,
-                'esquema_id'                                        => $esquema ? $esquema->id : NULL,
-                'tiene_descuento'                                   => $regla ? true : false
-            ];
+                $data = [
+                    'fecha_inicio'                                      => $calculo[1] != null ? Carbon::parse($calculo[1])->format('Y-m-d') : NULL,
+                    'fecha_termino'                                     => $calculo[2] != null ? Carbon::parse($calculo[2])->format('Y-m-d') : NULL,
+                    'fecha_inicio_periodo'                              => $calculo[4] != null ? Carbon::parse($calculo[4])->format('Y-m-d') : NULL,
+                    'fecha_termino_periodo'                             => $calculo[5] != null ? Carbon::parse($calculo[5])->format('Y-m-d') : NULL,
+                    'total_dias_ausentismo'                             => $calculo[0],
+                    'total_dias_ausentismo_periodo'                     => $calculo[3],
+                    'hora_inicio'                                       => $hora_inicio->format('H:i:s'),
+                    'hora_termino'                                      => $hora_termino->format('H:i:s'),
+                    'total_horas_ausentismo'                            => $diff_hours,
+                    'user_id'                                           => $funcionario->id,
+                    'tipo_ausentismo_id'                                => $tipo_ausentismo->id,
+                    'regla_id'                                          => $regla ? $regla->id : null,
+                    'grupo_id'                                          => $regla ? $regla->grupoAusentismo->id : 3,
+                    'recarga_id'                                        => $this->recarga->id,
+                    'esquema_id'                                        => $esquema ? $esquema->id : NULL,
+                    'tiene_descuento'                                   => $regla ? true : false
+                ];
 
-            $ausentismo = Ausentismo::create($data);
+                $ausentismo = Ausentismo::create($data);
 
-            if ($ausentismo) {
-                $cartola_controller = new ActualizarEsquemaController;
-                $cartola_controller->updateAusentismosGrupoTres($funcionario, $this->recarga, 3);
-                $this->importados++;
-                return $ausentismo;
+                if ($ausentismo) {
+                    $cartola_controller = new ActualizarEsquemaController;
+                    $cartola_controller->updateAusentismosGrupoTres($funcionario, $this->recarga, 3);
+                    $this->importados++;
+                    return $ausentismo;
+                }
             }
+        } catch (\Exception $error) {
+            Log::info($error->getMessage());
         }
     }
 
