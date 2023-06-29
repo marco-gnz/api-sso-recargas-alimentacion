@@ -97,8 +97,8 @@ class RecargaContrato extends Model
             }
 
             $contrato->uuid              = Str::uuid();
-            $contrato->usuario_add_id    = Auth::user()->id;
-            $contrato->fecha_add         = Carbon::now()->toDateTimeString();
+            $contrato->user_created_by    = Auth::user()->id;
+            $contrato->date_created_user  = Carbon::now()->toDateTimeString();
             $contrato->total_dias_habiles_contrato_periodo = ($contrato->total_dias_contrato_periodo - $days);
         });
 

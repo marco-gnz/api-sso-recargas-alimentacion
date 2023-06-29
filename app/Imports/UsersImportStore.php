@@ -22,6 +22,7 @@ use App\Rules\TipeValueDateContrato;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
+use Illuminate\Support\Facades\Log;
 
 class UsersImportStore implements ToModel, WithValidation, WithHeadingRow
 {
@@ -202,6 +203,7 @@ class UsersImportStore implements ToModel, WithValidation, WithHeadingRow
             }
             return $user;
         } catch (\Exception $error) {
+            Log::info($error->getMessage());
             $this->respuesta = $error->getMessage();
             return $this->respuesta;
         }
