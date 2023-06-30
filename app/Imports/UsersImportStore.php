@@ -67,7 +67,7 @@ class UsersImportStore implements ToModel, WithValidation, WithHeadingRow
     public function transformDate($value, $format = 'Y-m-d')
     {
         try {
-            if($value != $this->value_date_indefinido){
+            if ($value != $this->value_date_indefinido) {
                 return Carbon::instance(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($value));
             }
         } catch (\ErrorException $e) {
@@ -265,42 +265,42 @@ class UsersImportStore implements ToModel, WithValidation, WithHeadingRow
     }
 
     public function returnFechaTerminoContrato($fecha_termino, $fecha_termino_alejamiento)
-{
-    $tz = 'America/Santiago';
-    $fecha_recarga_inicio = Carbon::createFromDate($this->recarga->anio_beneficio, $this->recarga->mes_beneficio, '01', $tz);
-    $fecha_recarga_termino = $fecha_recarga_inicio->endOfMonth();
+    {
+        $tz = 'America/Santiago';
+        $fecha_recarga_inicio = Carbon::createFromDate($this->recarga->anio_beneficio, $this->recarga->mes_beneficio, '01', $tz);
+        $fecha_recarga_termino = $fecha_recarga_inicio->endOfMonth();
 
-    $fecha = null;
-    $fecha_alejamiento = false;
+        $fecha = null;
+        $fecha_alejamiento = false;
 
-    // Validar fecha de término
-    if ($fecha_termino !== null && $fecha_termino !== $this->value_date_indefinido) {
-        $fecha_termino_val = Carbon::parse($this->transformDate($fecha_termino));
+        // Validar fecha de término
+        if ($fecha_termino !== null && $fecha_termino !== $this->value_date_indefinido) {
+            $fecha_termino_val = Carbon::parse($this->transformDate($fecha_termino));
 
-        if ($fecha_termino_val->format('Y-m-d') <= $fecha_recarga_termino->format('Y-m-d')) {
-            $fecha = $fecha_termino_val->format('Y-m-d');
-        } else {
-            $fecha = $fecha_recarga_termino->format('Y-m-d');
+            if ($fecha_termino_val->format('Y-m-d') <= $fecha_recarga_termino->format('Y-m-d')) {
+                $fecha = $fecha_termino_val->format('Y-m-d');
+            } else {
+                $fecha = $fecha_recarga_termino->format('Y-m-d');
+            }
         }
-    }
 
-    // Validar fecha de término de alejamiento
-    if ($fecha_termino_alejamiento !== null && $fecha_termino_alejamiento !== $this->value_date_indefinido) {
-        $fecha_termino_alejamiento_val = Carbon::parse($this->transformDate($fecha_termino_alejamiento));
+        // Validar fecha de término de alejamiento
+        if ($fecha_termino_alejamiento !== null && $fecha_termino_alejamiento !== $this->value_date_indefinido) {
+            $fecha_termino_alejamiento_val = Carbon::parse($this->transformDate($fecha_termino_alejamiento));
 
-        if ($fecha_termino_alejamiento_val->format('Y-m-d') <= $fecha_recarga_termino->format('Y-m-d')) {
-            $fecha = $fecha_termino_alejamiento_val->format('Y-m-d');
-            $fecha_alejamiento = true;
+            if ($fecha_termino_alejamiento_val->format('Y-m-d') <= $fecha_recarga_termino->format('Y-m-d')) {
+                $fecha = $fecha_termino_alejamiento_val->format('Y-m-d');
+                $fecha_alejamiento = true;
+            }
         }
+
+        $response = (object) [
+            'fecha' => $fecha,
+            'fecha_alejamiento' => $fecha_alejamiento,
+        ];
+
+        return $response;
     }
-
-    $response = (object) [
-        'fecha' => $fecha,
-        'fecha_alejamiento' => $fecha_alejamiento,
-    ];
-
-    return $response;
-}
 
 
     public function validateRut($value)
@@ -459,7 +459,7 @@ class UsersImportStore implements ToModel, WithValidation, WithHeadingRow
                     $exists = DB::table('leys')
                         ->where(function ($query) use ($value) {
                             $query->where('nombre', $value)
-                                  ->orWhere('codigo', $value);
+                                ->orWhere('codigo', $value);
                         })
                         ->exists();
 
