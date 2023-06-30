@@ -14,4 +14,9 @@ class Unidad extends Model
         'cod_sirh',
         'nombre'
     ];
+
+    public function contratos()
+    {
+        return $this->hasMany(RecargaContrato::class);
+    }
 }

@@ -70,6 +70,21 @@ class ModulosResponseController extends Controller
         }
     }
 
+    public function returnUnidadesRecarga($codigo_recarga)
+    {
+        try {
+            $recarga    = Recarga::where('codigo', $codigo_recarga)->firstOrFail();
+            $unidades = Unidad::whereHas('contratos', function($query) use($recarga){
+                $query->where('recarga_id', $recarga->id);
+            })->orderBy('nombre', 'asc')
+            ->get()->unique('id');
+
+            return response()->json($unidades, 200);
+        } catch (\Exception $error) {
+            return $error->getMessage();
+        }
+    }
+
     public function returnTiposAusentismos()
     {
         try {

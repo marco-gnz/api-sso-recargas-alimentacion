@@ -213,6 +213,7 @@ class TablaResumenResource extends JsonResource
         $adv_4          = $this->advertenciaCuatro($this);
         $adv_5          = $this->advertenciaCinco($this);
         $advertencias   = $this->advertencias($adv_1, $adv_2, $adv_3, $adv_4, $adv_5);
+        $last_contrato_unidad = optional($this->contratos()->with('unidad')->orderBy('fecha_termino_periodo', 'DESC')->first())->unidad->nombre;
 
         return [
             'id'                                                    => $this->id,
@@ -256,6 +257,8 @@ class TablaResumenResource extends JsonResource
             'funcionario_apellidos'             => $this->funcionario ? $this->funcionario->apellidos : null,
             'recarga_codigo'                    => $this->recarga ? $this->recarga->codigo : null,
             'grupo_uno'                         => [],
+            'unidad_nom'                        => $last_contrato_unidad ? $last_contrato_unidad : null,
+            'unidad_abre'                       => $last_contrato_unidad ? substr($last_contrato_unidad, 0 , 7) : null,
             'total_dias_cancelar'               => $this->total_dias_cancelar,
             'monto_cancelar'                    => $monto_total_cancelar_data,
             'ausentismos_grupo'                 => $this->totalAusentismosGrupos($this->recarga, $this->funcionario),
