@@ -46,6 +46,7 @@ class UsersImportStore implements ToModel, WithValidation, WithHeadingRow
         $this->fecha_inicio         = strtolower($this->columnas[11]);
         $this->fecha_termino        = strtolower($this->columnas[12]);
         $this->fecha_alejamiento    = strtolower($this->columnas[13]);
+        $this->centro_costo        = strtolower($this->columnas[14]);
     }
 
     public $importados              = 0;
@@ -127,6 +128,7 @@ class UsersImportStore implements ToModel, WithValidation, WithHeadingRow
                     'ley_id'                        => $ley->id,
                     'hora_id'                       => $horas->id,
                     'recarga_id'                    => $this->recarga->id,
+                    'centro_costo'                  => $row[strtolower($this->centro_costo)]
                 ];
 
                 $new_contrato = RecargaContrato::create($data_contrato);
@@ -179,6 +181,7 @@ class UsersImportStore implements ToModel, WithValidation, WithHeadingRow
                     'ley_id'                        => $ley->id,
                     'hora_id'                       => $horas->id,
                     'recarga_id'                    => $this->recarga->id,
+                    'centro_costo'                  => $row[strtolower($this->centro_costo)]
                 ];
 
                 $new_contrato = RecargaContrato::create($data_contrato);
@@ -478,7 +481,10 @@ class UsersImportStore implements ToModel, WithValidation, WithHeadingRow
             $this->fecha_termino => [
                 'required',
                 new TipeValueDateContrato
-            ]
+            ],
+            $this->centro_costo => [
+                'required',
+            ],
         ];
     }
 
@@ -524,6 +530,8 @@ class UsersImportStore implements ToModel, WithValidation, WithHeadingRow
 
             "{$this->fecha_termino}.required"                               => 'La fecha de término es obligatoria.',
             "{$this->fecha_termino}.date"                                   => 'La fecha debe ser yyyy-mm-dd.',
+
+            "{$this->centro_costo}.required"                                => 'El centro de costo es obligatorio.',
         ];
     }
 }

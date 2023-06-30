@@ -23,6 +23,7 @@ class RecargaContrato extends Model
         'fecha_termino_periodo',
         'total_dias_contrato_periodo',
         'total_dias_habiles_contrato_periodo',
+        'centro_costo',
         'user_id',
         'establecimiento_id',
         'unidad_id',

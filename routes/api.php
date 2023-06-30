@@ -45,6 +45,7 @@ Route::group(
         Route::get('/admin/modulos/leyes/response', [App\Http\Controllers\Admin\Modulos\ModulosResponseController::class, 'returnLeyes']);
         Route::get('/admin/modulos/unidades/response', [App\Http\Controllers\Admin\Modulos\ModulosResponseController::class, 'returnUnidades']);
         Route::get('/admin/modulos/unidades/response/recarga/{codigo_recarga}', [App\Http\Controllers\Admin\Modulos\ModulosResponseController::class, 'returnUnidadesRecarga']);
+        Route::get('/admin/modulos/centro-costos/response/recarga/{codigo_recarga}', [App\Http\Controllers\Admin\Modulos\ModulosResponseController::class, 'returnCentroCostosRecarga']);
         Route::get('/admin/modulos/tipos-ausentismos/response', [App\Http\Controllers\Admin\Modulos\ModulosResponseController::class, 'returnTiposAusentismos']);
         Route::get('/admin/modulos/tipos-incrementos/response', [App\Http\Controllers\Admin\Modulos\ModulosResponseController::class, 'returnTiposIncrementos']);
         Route::get('/admin/modulos/grupos-ausentismos/response', [App\Http\Controllers\Admin\Modulos\ModulosResponseController::class, 'returnGruposAusentismos']);

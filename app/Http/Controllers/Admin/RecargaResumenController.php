@@ -219,6 +219,7 @@ class RecargaResumenController extends Controller
                 ->unidadContrato($request->unidades, $equals)
                 ->horaContrato($request->horas)
                 ->tipoAusentismo($request->tipo_ausentismo)
+                ->centroCostoContrato($request->centro_costo)
                 ->with($withReReglas);
 
             $ordenamientos = $request->ordenamiento;

@@ -23,6 +23,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\ToArray;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
 
 class UsersImport implements WithValidation, ToCollection, WithHeadingRow
 {
@@ -46,6 +47,7 @@ class UsersImport implements WithValidation, ToCollection, WithHeadingRow
         $this->fecha_inicio         = $this->columnas[11];
         $this->fecha_termino        = $this->columnas[12];
         $this->fecha_alejamiento    = $this->columnas[13];
+        $this->centro_costo        = $this->columnas[14];
     }
 
     public $data;
@@ -174,6 +176,7 @@ class UsersImport implements WithValidation, ToCollection, WithHeadingRow
                         'hora'                          => $horas->nombre,
                         'fecha_inicio'                  => $calculo[0] ? Carbon::parse($calculo[0])->format('d-m-Y') : '¡error!',
                         'fecha_termino'                 => $calculo[1] ? Carbon::parse($calculo[1])->format('d-m-Y') : '¡error!',
+                        'c_costro'                      => $row[strtolower($this->centro_costo)]
                     ];
 
                     array_push($funcionarios, $data);
@@ -181,6 +184,7 @@ class UsersImport implements WithValidation, ToCollection, WithHeadingRow
                 $this->data = $funcionarios;
             }
         } catch (\Exception $error) {
+            Log::info($error->getMessage());
             $this->data = $error->getMessage();
         }
     }
@@ -379,7 +383,10 @@ class UsersImport implements WithValidation, ToCollection, WithHeadingRow
             $this->fecha_termino => [
                 'required',
                 new TipeValueDateContrato,
-            ]
+            ],
+            $this->centro_costo => [
+                'required',
+            ],
         ];
     }
 
@@ -425,6 +432,8 @@ class UsersImport implements WithValidation, ToCollection, WithHeadingRow
 
             "{$this->fecha_termino}.required"                               => 'La fecha de término es obligatoria.',
             "{$this->fecha_termino}.date"                                   => 'La fecha debe ser yyyy-mm-dd.',
+
+            "{$this->centro_costo}.required"                                => 'El centro de costo es obligatorio.',
         ];
     }
 }

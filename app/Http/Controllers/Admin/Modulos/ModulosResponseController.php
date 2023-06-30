@@ -74,12 +74,24 @@ class ModulosResponseController extends Controller
     {
         try {
             $recarga    = Recarga::where('codigo', $codigo_recarga)->firstOrFail();
-            $unidades = Unidad::whereHas('contratos', function($query) use($recarga){
+            $unidades = Unidad::whereHas('contratos', function ($query) use ($recarga) {
                 $query->where('recarga_id', $recarga->id);
             })->orderBy('nombre', 'asc')
-            ->get()->unique('id');
+                ->get()->unique('id');
 
             return response()->json($unidades, 200);
+        } catch (\Exception $error) {
+            return $error->getMessage();
+        }
+    }
+
+    public function returnCentroCostosRecarga($codigo_recarga)
+    {
+        try {
+            $recarga    = Recarga::where('codigo', $codigo_recarga)->firstOrFail();
+            $centros_costos = $recarga->contratos()->pluck('centro_costo')->unique()->values()->toArray();
+
+            return response()->json($centros_costos, 200);
         } catch (\Exception $error) {
             return $error->getMessage();
         }

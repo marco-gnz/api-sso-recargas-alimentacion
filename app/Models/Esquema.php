@@ -371,6 +371,14 @@ class Esquema extends Model
             });
     }
 
+    public function scopeCentroCostoContrato($query, $centro)
+    {
+        if ($centro)
+            return $query->whereHas('contratos', function ($q) use ($centro) {
+                $q->whereIn('centro_costo', $centro);
+            });
+    }
+
     public function scopeTipoAusentismo($query, $horas)
     {
         if ($horas)

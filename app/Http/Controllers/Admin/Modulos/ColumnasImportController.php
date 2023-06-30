@@ -123,7 +123,13 @@ class ColumnasImportController extends Controller
                 'formato'               => $this->fecha_2,
                 'required'              => true,
                 'descripcion'           => 'Fecha de alejamiento de contrato'
-            ]
+            ],
+            [
+                'nombre_columna'        => 'centro costo',
+                'formato'               => $this->numerico,
+                'required'              => true,
+                'descripcion'           => 'Centro de costo'
+            ],
         ];
         return $columnas;
     }
