@@ -201,34 +201,6 @@ class Esquema extends Model
             $total_dias_cancelar = $total_contrato - ($total_ausentismos + $total_viaticos) + $total_dias_ajustes;
             /* $total_dias_cancelar = $total_dias_cancelar > 0 ? $total_dias_cancelar : 0; */
         }
-        /* switch ($esquema->es_turnante) {
-            case 1:
-            case 3:
-                $total_contrato      = $esquema->calculo_turno;
-                $total_ausentismos   = $esquema->calculo_grupo_uno + $esquema->calculo_grupo_dos + $esquema->total_dias_grupo_tres;
-                $total_viaticos      = $esquema->total_dias_viaticos;
-                $total_dias_ajustes  = $esquema->calculo_dias_ajustes;
-                $total_monto_ajustes = $esquema->total_monto_ajuste;
-
-                $total_dias_cancelar = $total_contrato - ($total_ausentismos + $total_viaticos) + $total_dias_ajustes;
-                $total_dias_cancelar = $total_dias_cancelar > 0 ? $total_dias_cancelar : 0;
-
-
-                break;
-
-            case 2:
-                $total_contrato      = $esquema->calculo_contrato;
-                $total_ausentismos   = $esquema->calculo_grupo_uno + $esquema->calculo_grupo_dos + $esquema->total_dias_grupo_tres;
-                $total_viaticos      = $esquema->calculo_viaticos;
-                $total_dias_ajustes  = $esquema->calculo_dias_ajustes;
-                $total_monto_ajustes = $esquema->total_monto_ajuste;
-
-                $total_dias_cancelar = $total_contrato - ($total_ausentismos + $total_viaticos) + $total_dias_ajustes;
-                $total_dias_cancelar = $total_dias_cancelar > 0 ? $total_dias_cancelar : 0;
-                break;
-        } */
-
-
 
         return $total_dias_cancelar;
     }
@@ -253,12 +225,11 @@ class Esquema extends Model
 
         static::updating(function ($esquema) {
             $es_turnante                    = self::esTurnante($esquema);
+            $esquema->es_turnante           = $es_turnante;
             $total_dias_cancelar            = self::totalDiasCancelar($esquema);
-
             $monto_total_dias               = $total_dias_cancelar * $esquema->recarga->monto_dia;
             $monto_total_cancelar           = $monto_total_dias + $esquema->total_monto_ajuste;
 
-            $esquema->es_turnante           = $es_turnante;
             $esquema->total_dias_cancelar   = $total_dias_cancelar;
             $esquema->monto_total_cancelar  = $monto_total_cancelar;
             $esquema->date_updated_user     = Carbon::now()->toDateTimeString();

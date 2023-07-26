@@ -51,6 +51,19 @@ class ActualizarEsquemaController extends Controller
                 $update = $esquema->update([
                     'turno_asignacion' => $turno_asignacion > 0 ? true : false,
                 ]);
+                $esquema->fresh();
+
+                $total_contrato = $this->totalContratoAfter($esquema);
+
+                $esquema->update([
+                    'calculo_contrato' => $total_contrato,
+                ]);
+
+                $esquema->fresh();
+
+                $esquema->update([
+                    'es_turnante_value' => $esquema->es_turnante === 1 ? true : false,
+                ]);
             }
         } catch (\Exception $error) {
             return $error->getMessage();
@@ -73,6 +86,20 @@ class ActualizarEsquemaController extends Controller
                     'total_dias_feriados_turno_en_periodo_contrato'         => $totales->total_dias_feriados_turno_en_periodo_contrato,
                     'calculo_turno'                                         => $totales->calculo_turno,
                     'total_turno'                                           => $totales->total_turno,
+                ]);
+
+                $esquema->fresh();
+
+                $total_contrato = $this->totalContratoAfter($esquema);
+
+                $esquema->update([
+                    'calculo_contrato' => $total_contrato,
+                ]);
+
+                $esquema->fresh();
+
+                $esquema->update([
+                    'es_turnante_value' => $esquema->es_turnante === 1 ? true : false,
                 ]);
             }
         } catch (\Exception $error) {
@@ -320,6 +347,15 @@ class ActualizarEsquemaController extends Controller
         $total_dias_contrato = $total_dias_habiles_contrato_periodo - $feriados_count;
         if ($esquema->es_turnante === 1) {
             $total_dias_contrato = $total_dias_contrato_periodo;
+        }
+        return $total_dias_contrato;
+    }
+
+    private function totalContratoAfter($esquema)
+    {
+        $total_dias_contrato = $esquema->total_dias_habiles_contrato - $esquema->total_dias_feriados_contrato;
+        if ($esquema->es_turnante === 1) {
+            $total_dias_contrato = $esquema->total_dias_contrato;
         }
         return $total_dias_contrato;
     }
