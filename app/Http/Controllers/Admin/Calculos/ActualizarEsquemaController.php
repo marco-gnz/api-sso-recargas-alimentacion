@@ -34,6 +34,14 @@ class ActualizarEsquemaController extends Controller
                     'contrato_n_registros'          => count($contratos),
                 ];
                 $update = $esquema->update($data);
+
+                $esquema->fresh();
+
+                $total_contrato = $this->totalContratoAfter($esquema);
+
+                $esquema->update([
+                    'calculo_contrato' => $total_contrato,
+                ]);
             }
         } catch (\Exception $error) {
             return $error->getMessage();

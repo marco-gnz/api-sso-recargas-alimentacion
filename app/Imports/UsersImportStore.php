@@ -269,16 +269,23 @@ class UsersImportStore implements ToModel, WithValidation, WithHeadingRow
 
     public function returnFechaTerminoContrato($fecha_termino, $fecha_termino_alejamiento)
     {
-        $tz = 'America/Santiago';
-        $fecha_recarga_inicio = Carbon::createFromDate($this->recarga->anio_beneficio, $this->recarga->mes_beneficio, '01', $tz);
-        $fecha_recarga_termino = $fecha_recarga_inicio->endOfMonth();
+        $tz                     = 'America/Santiago';
+        $fecha_recarga_inicio   = Carbon::createFromDate($this->recarga->anio_beneficio, $this->recarga->mes_beneficio, '01', $tz);
+        $fecha_recarga_termino  = $fecha_recarga_inicio->endOfMonth();
+        $fecha                  = null;
+        $fecha_alejamiento      = false;
 
-        $fecha = null;
-        $fecha_alejamiento = false;
+        $fecha_termino              = $fecha_termino === $this->value_date_indefinido ? null : $fecha_termino;
+        $fecha_termino_alejamiento  = $fecha_termino_alejamiento === $this->value_date_indefinido ? null : $fecha_termino_alejamiento;
 
-        // Validar fecha de término
-        if ($fecha_termino !== null && $fecha_termino !== $this->value_date_indefinido) {
-            $fecha_termino_val = Carbon::parse($this->transformDate($fecha_termino));
+        if ($fecha_termino === null && $fecha_termino_alejamiento === null) {
+            $fecha = $fecha_recarga_termino->format('Y-m-d');
+        } else if ($fecha_termino !== null && $fecha_termino_alejamiento !== null) {
+            $fecha_termino_alejamiento_val  = Carbon::parse($this->transformDate($fecha_termino_alejamiento));
+            $fecha                          = $fecha_termino_alejamiento_val->format('Y-m-d');
+            $fecha_alejamiento              = true;
+        } else if ($fecha_termino !== null) {
+            $fecha_termino_val  = Carbon::parse($this->transformDate($fecha_termino));
 
             if ($fecha_termino_val->format('Y-m-d') <= $fecha_recarga_termino->format('Y-m-d')) {
                 $fecha = $fecha_termino_val->format('Y-m-d');
@@ -287,18 +294,8 @@ class UsersImportStore implements ToModel, WithValidation, WithHeadingRow
             }
         }
 
-        // Validar fecha de término de alejamiento
-        if ($fecha_termino_alejamiento !== null && $fecha_termino_alejamiento !== $this->value_date_indefinido) {
-            $fecha_termino_alejamiento_val = Carbon::parse($this->transformDate($fecha_termino_alejamiento));
-
-            if ($fecha_termino_alejamiento_val->format('Y-m-d') <= $fecha_recarga_termino->format('Y-m-d')) {
-                $fecha = $fecha_termino_alejamiento_val->format('Y-m-d');
-                $fecha_alejamiento = true;
-            }
-        }
-
         $response = (object) [
-            'fecha' => $fecha,
+            'fecha'             => $fecha,
             'fecha_alejamiento' => $fecha_alejamiento,
         ];
 
@@ -404,7 +401,7 @@ class UsersImportStore implements ToModel, WithValidation, WithHeadingRow
                 if (!$validate) {
                     $validator->errors()->add($key, 'Rut incorrecto, por favor verificar. Verificado con Módulo 11.');
                 } else if (!$periodo_in_recarga) {
-                    $validator->errors()->add($key, "Fechas fuera de periodo de recarga.");
+                    $validator->errors()->add($key, "Fechas fuera de periodo de recarga. {$fecha_termino_real}");
                 } else if ($contrato_duplicado) {
                     $validator->errors()->add($key, "Contrato duplicado");
                 } else if (in_array($new_key, $assoc_array)) {
