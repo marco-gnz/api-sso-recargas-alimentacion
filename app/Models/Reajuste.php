@@ -127,7 +127,8 @@ class Reajuste extends Model
 
             $dias_periodo_habiles   = $diff_days - $days - $feriados;
             $total_dias             = $reajuste->incremento ? $reajuste->total_dias : $reajuste->total_dias * -1;
-            $monto_ajuste           = $reajuste->incremento ? $reajuste->monto_ajuste : $reajuste->monto_ajuste * -1;
+            $monto_ajuste           = $reajuste->valor_dia * (int)$reajuste->total_dias;
+            $monto_ajuste           = $reajuste->incremento ? $monto_ajuste : $monto_ajuste * -1;
 
             $reajuste->dias_periodo         = $diff_days;
             $reajuste->dias_periodo_habiles = $dias_periodo_habiles;

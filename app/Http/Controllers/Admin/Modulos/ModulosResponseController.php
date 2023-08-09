@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin\Modulos;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\FeriadosResource;
+use App\Models\Esquema;
 use App\Models\Establecimiento;
 use App\Models\Feriado;
 use App\Models\GrupoAusentismo;
@@ -178,61 +179,135 @@ class ModulosResponseController extends Controller
 
     public function returnDaysInDate(Request $request)
     {
-        $days               = 0;
-        $monto_ajuste       = 0;
-        $calculo_dias       = $request->calculo_dias === 'true' ? true : false;
-        $fecha_inicio       = Carbon::parse($request->fecha_inicio);
-        $fecha_termino      = Carbon::parse($request->fecha_termino);
-        $days               = $fecha_inicio->diffInDays($fecha_termino) + 1;
-        $valor_dia          = (int)$request->valor_dia;
-        $diff_days          = $days;
+        try {
+            $modificar_dias     = (int)$request->modificar_dias;
+            $modificar_dias     = $modificar_dias ? true : false;
+            $esquema            = Esquema::find($request->esquema_id);
+            $valor_dia          = $esquema->recarga->monto_dia;
+            $rebaja_dias        = (int)$request->rebaja_dias;
+            $rebaja_dias        = $rebaja_dias ? false : true;
+            $days               = (int)$request->total_dias;
+            $monto_ajuste       = 0;
+            $fecha_inicio       = Carbon::parse($request->fecha_inicio);
+            $fecha_termino      = Carbon::parse($request->fecha_termino);
+            $diff_days          = $fecha_inicio->diffInDays($fecha_termino) + 1;
+            $calculo_dias       = $request->calculo_dias === 'true' ? true : false;
 
-        if ($calculo_dias) {
-            $monto_ajuste   = $valor_dia * $days;
-        } else {
-            $fds        = 0;
-            $period     = CarbonPeriod::create($request->fecha_inicio, $request->fecha_termino);
-            $periodos   = $period->toArray();
-
-            foreach ($periodos as $periodo) {
-                $i_format = Carbon::parse($periodo)->isWeekend();
-                if ($i_format) {
-                    $fds++;
+            if (!$modificar_dias) {
+                $days       = $diff_days;
+                $fds        = 0;
+                $inicio     = Carbon::parse($request->fecha_inicio)->format('Y-m-d');
+                $termino    = Carbon::parse($request->fecha_termino)->format('Y-m-d');
+                if (!$calculo_dias) {
+                    for ($i = $inicio; $i <= $termino; $i++) {
+                        $i_format       = Carbon::parse($i)->isWeekend();
+                        if ($i_format) {
+                            $fds++;
+                        }
+                    }
+                    $feriados_count  = $esquema->recarga->feriados()->where('active', true)->whereBetween('fecha', [$inicio, $termino])->count();
+                    $days            = $days - $fds - $feriados_count;
                 }
             }
+            $days_form          = $days;
+            $days_form          = $rebaja_dias ? $days_form * -1 : $days_form;
 
-            $feriados       = Feriado::whereIn('fecha', [$request->fecha_inicio, $request->fecha_termino])->count();
-            $days           = $days - $fds - $feriados;
-            $monto_ajuste   = $valor_dia * $days;
+            $total_dias_ajustes_pendiente       = $esquema->reajustes()->where('tipo_reajuste', 0)->where('last_status', 0)->sum('total_dias');
+            $total_dias_ajustes_calculo         = $total_dias_ajustes_pendiente + $days_form;
+            $total_dias_cancelar_calculo        = $esquema->total_dias_cancelar + $total_dias_ajustes_calculo;
+            $monto_cancelar                     = $total_dias_cancelar_calculo * $valor_dia;
+            $monto_cancelar                     = "$" . number_format($monto_cancelar, 0, ",", ".");
+            $monto_ajuste                       = $valor_dia * $total_dias_ajustes_calculo;
+
+            $new_esquema = (object) [
+                'total_dias_ajustes_pendiente'          => (int)$total_dias_ajustes_pendiente,
+                'dias_reajuste'                         => $days_form,
+                'total_dias_ajustes_calculo'            => $total_dias_ajustes_calculo,
+                'monto_ajuste_format'                   => "$" . number_format($monto_ajuste, 0, ",", "."),
+                'dias_cancelar'                         => $total_dias_cancelar_calculo,
+                'monto_cancelar'                        => $monto_cancelar
+            ];
+
+            $totales = (object) [
+                'diff_days'             => $diff_days,
+                'total_dias'            => $days,
+                'monto_ajuste'          => $monto_ajuste,
+                'monto_ajuste_format'   => number_format($monto_ajuste, 0, ",", "."),
+                'new_esquema'           => $new_esquema
+            ];
+
+            return response()->json(
+                array(
+                    'status'        => 'Success',
+                    'title'         => null,
+                    'message'       => null,
+                    'totales'       => $totales,
+                )
+            );
+        } catch (\Exception $error) {
+            return response()->json($error->getMessage());
         }
+    }
+
+    public function getMontoInDays(Request $request)
+    {
+        $modificar_dias     = (int)$request->modificar_dias;
+        $modificar_dias     = $modificar_dias ? true : false;
+        $esquema            = Esquema::find($request->esquema_id);
+        $valor_dia          = (int)$request->valor_dia;
+        $rebaja_dias        = (int)$request->rebaja_dias;
+        $rebaja_dias        = $rebaja_dias ? false : true;
+        $days               = (int)$request->total_dias;
+        $monto_ajuste       = 0;
+        $fecha_inicio       = Carbon::parse($request->fecha_inicio);
+        $fecha_termino      = Carbon::parse($request->fecha_termino);
+        $diff_days          = $fecha_inicio->diffInDays($fecha_termino) + 1;
+        $calculo_dias       = $request->calculo_dias === 'true' ? true : false;
+
+
+
+        if (!$modificar_dias) {
+            $days       = $diff_days;
+            $fds        = 0;
+            $inicio     = Carbon::parse($request->fecha_inicio)->format('Y-m-d');
+            $termino    = Carbon::parse($request->fecha_termino)->format('Y-m-d');
+            if (!$calculo_dias) {
+                for ($i = $inicio; $i <= $termino; $i++) {
+                    $i_format       = Carbon::parse($i)->isWeekend();
+                    if ($i_format) {
+                        $fds++;
+                    }
+                }
+                $feriados_count  = $esquema->recarga->feriados()->where('active', true)->whereBetween('fecha', [$inicio, $termino])->count();
+                $days            = $days - $fds - $feriados_count;
+            }
+        }
+        $monto_ajuste = $valor_dia * $days;
+        $monto_ajuste = $rebaja_dias ? $monto_ajuste * -1 : $monto_ajuste;
+        $monto_ajuste_format        = "$" . number_format($monto_ajuste, 0, ",", ".");
+
+        $total_monto_ajustes_pendiente                      = $esquema->reajustes()->where('tipo_reajuste', 1)->where('last_status', 0)->sum('monto_ajuste');
+        $total_monto_ajustes_pendiente_format               = "$" . number_format($total_monto_ajustes_pendiente, 0, ",", ".");
+
+        $total_monto_ajustes_pendiente_nuevo_ajuste         = $total_monto_ajustes_pendiente + $monto_ajuste;
+        $total_monto_ajustes_pendiente_nuevo_ajuste_format  = "$" . number_format($total_monto_ajustes_pendiente_nuevo_ajuste, 0, ",", ".");
+
+        $total_monto_cancelar                               = $total_monto_ajustes_pendiente_nuevo_ajuste + $esquema->monto_total_cancelar;
+        $total_monto_cancelar_format                        = "$" . number_format($total_monto_cancelar, 0, ",", ".");
+
+        $new_esquema = (object) [
+            'total_monto_ajustes_pendiente'          => $total_monto_ajustes_pendiente_format,
+            'monto_ajuste_format'                    => $monto_ajuste_format,
+            'total_monto_calculo'                    => $total_monto_ajustes_pendiente_nuevo_ajuste_format,
+            'total_monto_cancelar'                   => $total_monto_cancelar_format
+        ];
 
         $totales = (object) [
             'diff_days'             => $diff_days,
             'total_dias'            => $days,
             'monto_ajuste'          => $monto_ajuste,
             'monto_ajuste_format'   => number_format($monto_ajuste, 0, ",", "."),
-        ];
-
-        return response()->json(
-            array(
-                'status'        => 'Success',
-                'title'         => null,
-                'message'       => null,
-                'totales'       => $totales,
-            )
-        );
-    }
-
-    public function getMontoInDays(Request $request)
-    {
-        $valor_dia          = (int)$request->valor_dia;
-        $total_dias         = (int)$request->total_dias;
-
-        $monto_ajuste       = $valor_dia * $total_dias;
-
-        $totales = (object) [
-            'monto_ajuste'          => $monto_ajuste,
-            'monto_ajuste_format'   => number_format($monto_ajuste, 0, ",", "."),
+            'new_esquema'           => $new_esquema
         ];
 
         return response()->json(

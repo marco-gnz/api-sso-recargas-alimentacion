@@ -70,7 +70,6 @@ class ReajustesController extends Controller
                 'tipo_incremento_id',
                 'tipo_reajuste',
                 'valor_dia',
-                'monto_ajuste',
                 'observacion'
             ];
 
