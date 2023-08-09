@@ -13,6 +13,8 @@
     <p>El acceso está encriptado, el cual podrás abrir utilizando como contraseña el <b>RUT sin guion ni dígito verificador</b> del funcionario beneficiario.</p>
     <p>En caso de dudas o consultas, dirigir correo a <b>jorge.oyarzuns@redsalud.gob.cl</b></p>
 
+    <p>Se permite el acceso únicamente desde red MINSAL.</p>
+
     <p><i>No responder a este correo electrónico: Este mensaje se ha enviado desde una dirección exclusiva para envío de correos automatizados, por lo tanto, no se reciben respuestas en esta cuenta.</i></p>
     <p>Atentamente,</p>
 @endsection
