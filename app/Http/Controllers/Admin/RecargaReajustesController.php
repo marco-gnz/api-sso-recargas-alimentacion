@@ -18,6 +18,7 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Admin\Calculos\PagoBeneficioController;
+use App\Http\Resources\FuncionarioContratosResource;
 
 class RecargaReajustesController extends Controller
 {
@@ -64,11 +65,72 @@ class RecargaReajustesController extends Controller
         return $with;
     }
 
-    public function returnFindReajuste($uuid)
+    public function returnFindReajuste($uuid, Request $request)
     {
-        $reajuste = Reajuste::where('uuid', $uuid)->firstOrFail();
+        $tz                         = 'America/Santiago';
+        $dates                      = [];
+        $responses                  = [];
+        $reajuste                   = Reajuste::where('uuid', $uuid)->firstOrFail();
+        $date_recarga               = Carbon::createFromDate($reajuste->recarga->anio_beneficio, $reajuste->recarga->mes_beneficio, '01', $tz);
+        $primer_dia_mes_anterior    = $date_recarga->subMonth()->startOfMonth();
 
-        return $this->successResponse(FuncionarioReajustesAllResource::make($reajuste), null, null, 200);
+        $mont_last      = $primer_dia_mes_anterior->format('m');
+        $year_last      = $primer_dia_mes_anterior->format('Y');
+
+        $contratos      = $reajuste->funcionario->contratos()
+            ->where('recarga_id', '!=', $reajuste->recarga_id)
+            ->whereMonth('fecha_inicio_periodo', $mont_last)
+            ->whereYear('fecha_inicio_periodo', $year_last)
+            ->orderBy('id', 'DESC')->get();
+        $filtros        = $reajuste->funcionario->contratos()->pluck('fecha_termino')->unique()->toArray();
+
+        foreach ($filtros as $filtro) {
+            $month = Carbon::parse($filtro)->format('m');
+            $year  = (int)Carbon::parse($filtro)->format('Y');
+            $date  = Carbon::createFromDate($year, $month, '01', $tz)->format('Y-m-d');
+
+            $new_filtro = (object) [
+                'month' => $month,
+                'year'  => $year,
+                'date'  => $date
+            ];
+
+            if (!in_array($date, $dates)) {
+                array_push($dates, $date);
+                array_push($responses, $new_filtro);
+            }
+        }
+
+        return response()->json(
+            array(
+                'status'    => 'Success',
+                'title'     => null,
+                'message'   => null,
+                'reajuste'  => FuncionarioReajustesAllResource::make($reajuste),
+                'contratos' => FuncionarioContratosResource::collection($contratos),
+                'filtros'   => $responses
+            )
+        );
+    }
+
+    public function getContratosFiltro($uuid, $periodo)
+    {
+        $reajuste           = Reajuste::where('uuid', $uuid)->firstOrFail();
+        $periodo            = Carbon::parse($periodo);
+        $contratos  = $reajuste->funcionario->contratos()
+            ->whereMonth('fecha_inicio_periodo', $periodo->format('m'))
+            ->whereYear('fecha_inicio_periodo', $periodo->format('Y'))
+            ->orderBy('id', 'DESC')
+            ->get();
+
+        return response()->json(
+            array(
+                'status'    => 'Success',
+                'title'     => null,
+                'message'   => null,
+                'contratos' => FuncionarioContratosResource::collection($contratos),
+            )
+        );
     }
 
     public function returnReajustesRecarga($codigo, Request $request)
@@ -159,14 +221,14 @@ class RecargaReajustesController extends Controller
             $withFnRecargas         = $this->withFnRecargas($recarga);
 
             $funcionario    = User::with($withFnAusentismos)
-            ->with($withFnContratos)
-            ->with($withFnAsistencias)
-            ->with($withFnAjustes)
-            ->with($withFnTurnos)
-            ->with($withFnViaticos)
-            ->with($withFnRecargas)
-            ->where('id', $request->user_id)
-            ->firstOrFail();
+                ->with($withFnContratos)
+                ->with($withFnAsistencias)
+                ->with($withFnAjustes)
+                ->with($withFnTurnos)
+                ->with($withFnViaticos)
+                ->with($withFnRecargas)
+                ->where('id', $request->user_id)
+                ->firstOrFail();
             $form           = ['recarga_codigo', 'user_id', 'fecha_inicio', 'fecha_termino', 'incremento', 'tipo_ausentismo_id', 'tipo_incremento_id', 'dias', 'tipo_reajuste', 'valor_dia', 'monto_ajuste', 'observacion'];
 
             $reajuste       = Reajuste::create($request->only($form));
@@ -193,7 +255,7 @@ class RecargaReajustesController extends Controller
                     )
                 );
 
-               /*  return $this->successResponse(array(TablaResumenResource::make($funcionario), RecargaResumenResource::make($recarga)), 'Reajuste ingresado con éxito.', null, 200); */
+                /*  return $this->successResponse(array(TablaResumenResource::make($funcionario), RecargaResumenResource::make($recarga)), 'Reajuste ingresado con éxito.', null, 200); */
             }
         } catch (\Exception $error) {
             return response()->json($error->getMessage());

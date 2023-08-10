@@ -134,6 +134,7 @@ Route::group(
         Route::put('/admin/recargas/reajuste/{uuid}', [App\Http\Controllers\Admin\Reajustes\ReajustesController::class, 'validateReajuste']);
         Route::put('/admin/recargas/reajuste/{uuid}/resumen', [App\Http\Controllers\Admin\Reajustes\ReajustesController::class, 'validateReajusteResumen']);
         Route::post('/admin/recargas/reajuste', [App\Http\Controllers\Admin\Reajustes\ReajustesController::class, 'storeReajuste']);
+        Route::get('/admin/recargas/reajuste/{uuid}/contratos/{periodo}', [App\Http\Controllers\Admin\RecargaReajustesController::class, 'getContratosFiltro']);
 
         //recarga-funcionario
         Route::get('/admin/recargas/recarga/{codigo}/funcionario/{uuid}', [App\Http\Controllers\Admin\RecargaFuncionarioController::class, 'returnFuncionario']);
