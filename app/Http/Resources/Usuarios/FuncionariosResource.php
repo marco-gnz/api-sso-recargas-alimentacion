@@ -14,8 +14,10 @@ class FuncionariosResource extends JsonResource
      */
     public function toArray($request)
     {
-        $contrato = $this->contratos->last();
-        $esquema  = $this->esquemas->last();
+        $contrato = $this->contratos()->orderBy('fecha_termino_periodo', 'DESC')->first();
+        $esquema  = $this->esquemas()->whereHas('recarga', function ($q) {
+            $q->where('active', true);
+        })->where('active', true)->orderBy('id', 'DESC')->first();
 
         return [
             'uuid'              => $this->uuid,

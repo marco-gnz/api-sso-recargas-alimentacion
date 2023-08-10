@@ -22,13 +22,14 @@ class FuncionarioContratosResource extends JsonResource
             'fecha_inicio_periodo'                  => $this->fecha_inicio ? Carbon::parse($this->fecha_inicio_periodo)->format('d-m-Y') : null,
             'fecha_termino_periodo'                 => $this->fecha_termino_periodo ? Carbon::parse($this->fecha_termino_periodo)->format('d-m-Y') : null,
             'total_dias_contrato_periodo'           => $this->total_dias_contrato_periodo ? round($this->total_dias_contrato_periodo).' d' : null,
-            'total_dias_habiles_contrato_periodo'   => $this->total_dias_habiles_contrato_periodo,
+            'total_dias_habiles_contrato_periodo'   => (int)$this->total_dias_habiles_contrato_periodo,
             'unidad_nombre'                         => $this->unidad ? $this->unidad->nombre : null,
             'planta_nombre'                         => $this->planta ? $this->planta->nombre : null,
             'cargo_nombre'                          => $this->cargo ? $this->cargo->nombre : null,
             'ley_nombre'                            => $this->ley ? $this->ley->codigo : null,
             'hora_nombre'                           => $this->hora ? $this->hora->nombre : null,
-            'alejamiento'                           => $this->alejamiento ? true : false
+            'alejamiento'                           => $this->alejamiento ? true : false,
+            'centro_costo'                          => $this->centro_costo
         ];
     }
 }

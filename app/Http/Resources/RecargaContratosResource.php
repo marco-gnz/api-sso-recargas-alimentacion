@@ -61,6 +61,7 @@ class RecargaContratosResource extends JsonResource
             'existe_funcionario'                    => $this->esquema ? true : false,
             'es_turnante'                           => $this->esquema ? Esquema::TURNANTE_NOM[$this->esquema->es_turnante] : null,
             'es_turnante_type'                      => $this->esquema ? ($this->esquema->es_turnante === 1 ? 'warning' : ($this->esquema->es_turnante === 2 ? 'primary' : 'danger')) : null,
+            'centro_costo'                          => $this->centro_costo
         ];
     }
 }
