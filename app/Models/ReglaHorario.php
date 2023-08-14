@@ -15,4 +15,9 @@ class ReglaHorario extends Model
         'hora_termino',
         'regla_id'
     ];
+
+    public function regla()
+    {
+        return $this->belongsTo(Regla::class, 'regla_id');
+    }
 }

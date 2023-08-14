@@ -5,6 +5,7 @@ namespace App\Imports\Grupos;
 use App\Models\Ausentismo;
 use App\Models\Esquema;
 use App\Models\Regla;
+use App\Models\ReglaHorario;
 use App\Models\TipoAusentismo;
 use App\Models\User;
 use App\Rules\FechaRecarga;
@@ -14,6 +15,7 @@ use Maatwebsite\Excel\Concerns\WithValidation;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 
 class GrupoTresImport implements ToCollection, WithHeadingRow, WithValidation
 {
@@ -70,45 +72,16 @@ class GrupoTresImport implements ToCollection, WithHeadingRow, WithValidation
 
                     if ($funcionario && $tipo_ausentismo) {
                         $esquema        = $funcionario->esquemas()->where('recarga_id', $this->recarga->id)->first();
-                        $fecha_inicio   = Carbon::parse($this->transformDate($row[$this->fecha_inicio]));
-                        $fecha_termino  = Carbon::parse($this->transformDate($row[$this->fecha_termino]));
-                        $hora_inicio    = Carbon::parse($this->transformTime($row[$this->hora_inicio]));
-                        $hora_termino   = Carbon::parse($this->transformTime($row[$this->hora_termino]));
-
-                        $hora_inicio_request    = Carbon::parse($this->transformTime($row[$this->hora_inicio]));
-                        $hora_termino_request   = Carbon::parse($this->transformTime($row[$this->hora_termino]));
-                        $hora_inicio_request    = $hora_inicio_request->format('H:i:s');
-                        $hora_termino_request   = $hora_termino_request->format('H:i:s');
-
-                        $turnante = $esquema ? ($esquema->es_turnante != 2 ? true : false) : false;
-                        $regla    = Regla::where('tipo_ausentismo_id', $tipo_ausentismo->id)
-                            ->where('turno_funcionario', $turnante)
-                            ->where('recarga_id', $this->recarga->id)
-                            ->whereHas('horarios', function ($query) use ($hora_inicio_request, $hora_termino_request) {
-                                $query->where(function ($subQuery) use ($hora_inicio_request, $hora_termino_request) {
-                                    $subQuery->where([
-                                        ['hora_inicio', '>', $hora_inicio_request],
-                                        ['hora_inicio', '<', $hora_termino_request],
-                                    ])->orWhere([
-                                        ['hora_termino', '>', $hora_inicio_request],
-                                        ['hora_termino', '<', $hora_termino_request],
-                                    ])->orWhere([
-                                        ['hora_inicio', '>=', $hora_inicio_request],
-                                        ['hora_termino', '<=', $hora_termino_request],
-                                    ]);
-                                });
-                            })
-                            ->first();
-                        $diff_days      = $fecha_inicio->diffInDays($fecha_termino) + 1;
-                        $diff_hours     = $hora_inicio->diff($hora_termino);
+                        $calculo        = $this->calculoDescuento($row, $esquema, $tipo_ausentismo);
 
                         $data = [
                             'nombres'                   => $funcionario->nombre_completo,
                             'turnante'                  => $esquema ? Esquema::TURNANTE_NOM[$esquema->es_turnante] : '--',
-                            'fecha_ausentismo'          => "{$fecha_inicio->format('d-m-Y')} / {$fecha_termino->format('d-m-Y')} ({$diff_days})",
-                            'hora_ausentismo'           => "{$hora_inicio->format('H:i')} a {$hora_termino->format('H:i')}",
-                            'total_horas'               => $diff_hours != null ? "{$diff_hours->h}:{$diff_hours->i}" : '',
-                            'descuento'                 => $regla ? 'Si' : 'No'
+                            'inicio_ausentismo'         => $calculo->inicio,
+                            'termino_ausentismo'        => $calculo->termino,
+                            'descuento'                 => $calculo->descuento,
+                            'total_dias_descuento'      => $calculo->total_descuento,
+                            'total_descuento_habiles'   => $calculo->total_descuento_habiles
                         ];
                         array_push($ausentismos, $data);
                     }
@@ -118,6 +91,174 @@ class GrupoTresImport implements ToCollection, WithHeadingRow, WithValidation
         } catch (\Exception $error) {
             return $error->getMessage();
         }
+    }
+
+    private function calculoDescuento($row, $esquema, $tipo_ausentismo)
+    {
+        try {
+            $fecha_inicio   = Carbon::parse($this->transformDate($row[$this->fecha_inicio]));
+            $fecha_termino  = Carbon::parse($this->transformDate($row[$this->fecha_termino]));
+            $hora_inicio    = Carbon::parse($this->transformTime($row[$this->hora_inicio]))->format('H:i:s');
+            $hora_termino   = Carbon::parse($this->transformTime($row[$this->hora_termino]))->format('H:i:s');
+
+            $diff_days      = $fecha_inicio->diffInDays($fecha_termino) + 1;
+            $turnante       = $esquema ? ($esquema->es_turnante != 2 ? true : false) : false;
+            $total_descuento = 0;
+            $total_feriados  = 0;
+            $fds             = 0;
+            $feriados_count  = 0;
+            $regla           = null;
+
+            if ($diff_days > 1) {
+                //mas de un día
+                $fecha_inicio_request   = Carbon::parse($this->transformDate($row[$this->fecha_inicio]))->format('Y-m-d');
+                $fecha_termino_request  = Carbon::parse($this->transformDate($row[$this->fecha_termino]))->format('Y-m-d');
+
+                for ($i = $fecha_inicio_request; $i <= $fecha_termino_request; $i++) {
+                    $feriados_count = $this->recarga->feriados()->where('active', true)->where('fecha', $i)->count();
+                    $i_format       = Carbon::parse($i)->isWeekend();
+
+                    if ($i === $fecha_inicio_request) {
+                        $ini_new = $hora_inicio;
+                        $ter_new = '23:59:59';
+                        $ini_new = Carbon::parse($ini_new)->format('H:i:s');
+                        $ter_new = Carbon::parse($ter_new)->format('H:i:s');
+
+                        $corresponde_descuento = $this->correspondeDescuento($ini_new, $ter_new, $turnante);
+
+                        if ($corresponde_descuento->corresponde) {
+                            $regla = $corresponde_descuento->regla;
+                            $total_descuento++;
+                            if ($feriados_count > 0) {
+                                $total_feriados++;
+                            }
+
+                            if ($i_format) {
+                                $fds++;
+                            }
+                        }
+                    } else if ($i > $fecha_inicio_request && $i < $fecha_termino_request) {
+                        $ini_new = '00:00:00';
+                        $ter_new = '23:59:59';
+
+                        $ini_new = Carbon::parse($ini_new)->format('H:i:s');
+                        $ter_new = Carbon::parse($ter_new)->format('H:i:s');
+
+                        $corresponde_descuento = $this->correspondeDescuento($ini_new, $ter_new, $turnante);
+
+                        if ($corresponde_descuento->corresponde) {
+                            $regla = $corresponde_descuento->regla;
+                            $total_descuento++;
+                            if ($feriados_count > 0) {
+                                $total_feriados++;
+                            }
+
+                            if ($i_format) {
+                                $fds++;
+                            }
+                        }
+                    } else if ($i === $fecha_termino_request) {
+                        $ini_new = '00:00:00';
+                        $ter_new = $hora_termino;
+
+                        $ini_new = Carbon::parse($ini_new)->format('H:i:s');
+                        $ter_new = Carbon::parse($ter_new)->format('H:i:s');
+
+                        $corresponde_descuento = $this->correspondeDescuento($ini_new, $ter_new, $turnante);
+
+                        if ($corresponde_descuento->corresponde) {
+                            $regla = $corresponde_descuento->regla;
+                            $total_descuento++;
+                            if ($feriados_count > 0) {
+                                $total_feriados++;
+                            }
+
+                            if ($i_format) {
+                                $fds++;
+                            }
+                        }
+                    }
+                }
+            } else {
+                //1 día
+                $hora_inicio_request    = Carbon::parse($this->transformTime($row[$this->hora_inicio]));
+                $hora_termino_request   = Carbon::parse($this->transformTime($row[$this->hora_termino]));
+                $hora_inicio_request    = $hora_inicio_request->format('H:i:s');
+                $hora_termino_request   = $hora_termino_request->format('H:i:s');
+
+                $feriados_count         = $this->recarga->feriados()->where('active', true)->where('fecha', $fecha_inicio->format('Y-m-d'))->count();
+                $i_format               = Carbon::parse($fecha_inicio->format('Y-m-d'))->isWeekend();
+
+                $corresponde_descuento = $this->correspondeDescuento($hora_inicio_request, $hora_termino_request, $turnante);
+
+                if ($corresponde_descuento->corresponde) {
+                    $regla = $corresponde_descuento->regla;
+                    $total_descuento = 1;
+                    if ($feriados_count > 0) {
+                        $total_feriados = $feriados_count;
+                    }
+
+                    if ($i_format) {
+                        $fds = 1;
+                    }
+                }
+            }
+
+            $fecha_inicio   = Carbon::parse($this->transformDate($row[$this->fecha_inicio]));
+            $fecha_termino  = Carbon::parse($this->transformDate($row[$this->fecha_termino]));
+
+            $response = (object) [
+                'inicio'                    => "{$fecha_inicio->format('d-m-Y')} {$hora_inicio}",
+                'termino'                   => "{$fecha_termino->format('d-m-Y')} {$hora_termino}",
+                'descuento'                 => $total_descuento > 0 ? 'Si' : 'No',
+                'total_descuento_habiles'   => $total_descuento - $total_feriados - $fds,
+                'total_descuento'           => $total_descuento,
+                'regla'                     => $regla ? $regla : NULL
+            ];
+
+            return $response;
+        } catch (\Exception $error) {
+            return $error->getMessage();
+        }
+    }
+
+    private function correspondeDescuento($inicio, $termino, $turnante)
+    {
+        $corresponde = false;
+
+        $hora_inicio_request    = Carbon::parse($inicio);
+        $hora_termino_request   = Carbon::parse($termino);
+        $hora_inicio_request    = $hora_inicio_request->format('H:i:s');
+        $hora_termino_request   = $hora_termino_request->format('H:i:s');
+
+        $regla = Regla::where('turno_funcionario', $turnante)
+            ->where('recarga_id', $this->recarga->id)
+            ->whereHas('horarios', function ($query) use ($hora_inicio_request, $hora_termino_request) {
+                $query->where(function ($subQuery) use ($hora_inicio_request, $hora_termino_request) {
+                    $subQuery->where([
+                        ['hora_inicio', '>', $hora_inicio_request],
+                        ['hora_inicio', '<', $hora_termino_request],
+                    ])->orWhere([
+                        ['hora_termino', '>', $hora_inicio_request],
+                        ['hora_termino', '<', $hora_termino_request],
+                    ])->orWhere([
+                        ['hora_inicio', '>=', $hora_inicio_request],
+                        ['hora_termino', '<=', $hora_termino_request],
+                    ]);
+                });
+            })
+            ->first();
+
+        if ($regla) {
+            $corresponde = true;
+        }
+
+        $response = (object) [
+            'corresponde'   => $corresponde,
+            'regla'         => $regla
+        ];
+
+        return $response;
     }
 
     public function tieneDescuento($regla, $hora_inicio_archivo_concat, $hora_termino_archivo_concat, $concat_inicio_regla, $concat_termino_regla)

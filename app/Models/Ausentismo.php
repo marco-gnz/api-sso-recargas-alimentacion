@@ -119,14 +119,19 @@ class Ausentismo extends Model
             $ausentismo->date_created_user                      = Carbon::now()->toDateTimeString();
             $total_dias_habiles_ausentismo_periodo              = ($ausentismo->total_dias_ausentismo_periodo - $days);
             $total_dias_habiles_ausentismo_periodo              = $total_dias_habiles_ausentismo_periodo <= 0 ? 0 : $total_dias_habiles_ausentismo_periodo;
-            $ausentismo->total_dias_habiles_ausentismo_periodo  = $total_dias_habiles_ausentismo_periodo;
+
+            if ($ausentismo->grupo_id != 3) {
+                $ausentismo->total_dias_habiles_ausentismo_periodo  = $total_dias_habiles_ausentismo_periodo;
+            }
         });
 
         static::created(function ($ausentismo) {
-            $feriados_count                                     = $ausentismo->recarga->feriados()->where('active', true)->whereBetween('fecha', [$ausentismo->fecha_inicio_periodo, $ausentismo->fecha_termino_periodo])->count();
-            $total                                              = $ausentismo->total_dias_habiles_ausentismo_periodo - $feriados_count;
-            $ausentismo->total_dias_habiles_ausentismo_periodo  = $total;
-            $ausentismo->save();
+            if ($ausentismo->grupo_id != 3) {
+                $feriados_count                                     = $ausentismo->recarga->feriados()->where('active', true)->whereBetween('fecha', [$ausentismo->fecha_inicio_periodo, $ausentismo->fecha_termino_periodo])->count();
+                $total                                              = $ausentismo->total_dias_habiles_ausentismo_periodo - $feriados_count;
+                $ausentismo->total_dias_habiles_ausentismo_periodo  = $total;
+                $ausentismo->save();
+            }
         });
 
         static::updating(function ($ausentismo) {
