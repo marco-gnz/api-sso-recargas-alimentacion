@@ -117,6 +117,11 @@ class StatusRecargaController extends Controller
                 'nombre'     => 'Total días de contrato',
             ],
             (object) [
+                'slug'       => 'esquemas.id',
+                'id'         => 'unidad_last_contrato',
+                'nombre'     => 'Unidad de contrato',
+            ],
+            (object) [
                 'slug'       => 'esquemas.fecha_alejamiento',
                 'id'         => 'fecha_alejamiento',
                 'nombre'     => 'Fecha de alejamiento',
@@ -322,6 +327,7 @@ class StatusRecargaController extends Controller
         try {
             $recarga = Recarga::where('codigo', $request->codigo)->firstOrFail();
             $name_field = 'planilla_resumen.xlsx';
+
             return Excel::download(new EsquemasPlanillaExport($recarga->id, $request->campos_id, $request->campos_slug, $request->campos_nombre), $name_field);
         } catch (\Exception $error) {
             return response()->json($error->getMessage());
