@@ -15,6 +15,8 @@ use Maatwebsite\Excel\Concerns\WithValidation;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Illuminate\Support\Collection;
+use App\Http\Controllers\Admin\Calculos\AnalisisRegistroController;
+use App\Http\Controllers\Admin\Esquema\EsquemaController;
 use Illuminate\Support\Facades\Log;
 
 class GrupoTresImport implements ToCollection, WithHeadingRow, WithValidation
@@ -70,18 +72,30 @@ class GrupoTresImport implements ToCollection, WithHeadingRow, WithValidation
                     $funcionario        = User::where('rut', $rut)->first();
                     $tipo_ausentismo    = TipoAusentismo::where('nombre', $row[$this->nombre_tipo_ausentismo])->first();
 
+                    $fecha_inicio   = Carbon::parse($this->transformDate($row[$this->fecha_inicio]));
+                    $fecha_termino  = Carbon::parse($this->transformDate($row[$this->fecha_termino]));
+                    $hora_inicio    = Carbon::parse($this->transformTime($row[$this->hora_inicio]))->format('H:i:s');
+                    $hora_termino   = Carbon::parse($this->transformTime($row[$this->hora_termino]))->format('H:i:s');
+
                     if ($funcionario && $tipo_ausentismo) {
-                        $esquema        = $funcionario->esquemas()->where('recarga_id', $this->recarga->id)->first();
-                        $calculo        = $this->calculoDescuento($row, $esquema, $tipo_ausentismo);
+                        $esquema_controller     = new EsquemaController;
+                        $esquema                = $esquema_controller->returnEsquema($funcionario->id, $this->recarga->id);
+                        $turnante               = $esquema ? ($esquema->es_turnante != 2 ? true : false) : false;
+
+                        $analisis_registro_controller       = new AnalisisRegistroController;
+                        $analisis_ausentismo_grupo_tres      = $analisis_registro_controller->analisisAusentismoGrupoTres($turnante, $this->recarga, $funcionario, $fecha_inicio, $fecha_termino, $hora_inicio, $hora_termino);
+
 
                         $data = [
-                            'nombres'                   => $funcionario->nombre_completo,
-                            'turnante'                  => $esquema ? Esquema::TURNANTE_NOM[$esquema->es_turnante] : '--',
-                            'inicio_ausentismo'         => $calculo->inicio,
-                            'termino_ausentismo'        => $calculo->termino,
-                            'descuento'                 => $calculo->descuento,
-                            'total_dias_descuento'      => $calculo->total_descuento,
-                            'total_descuento_habiles'   => $calculo->total_descuento_habiles
+                            'nombres'                                           => $funcionario->nombre_completo,
+                            'turnante'                                          => $esquema ? Esquema::TURNANTE_NOM[$esquema->es_turnante] : '--',
+                            'fecha_ausentismo'                                  => "{$analisis_ausentismo_grupo_tres->fecha_inicio->format('d-m-Y')} / {$analisis_ausentismo_grupo_tres->fecha_termino->format('d-m-Y')}",
+                            'nombre_tipo_ausentismo'                            => $tipo_ausentismo ? $tipo_ausentismo->nombre : '--',
+                            'fecha_ausentismo_periodo'                          => "{$analisis_ausentismo_grupo_tres->fecha_inicio_periodo->format('d-m-Y')} {$analisis_ausentismo_grupo_tres->hora_inicio} / {$analisis_ausentismo_grupo_tres->fecha_termino_periodo->format('d-m-Y')} {$analisis_ausentismo_grupo_tres->hora_termino} ",
+                            'descuento'                                         => $analisis_ausentismo_grupo_tres->descuento,
+                            'dias_naturales'                                    => $analisis_ausentismo_grupo_tres->total_dias_ausentismo_periodo_calculo,
+                            'total_dias_habiles_ausentismo_periodo'             => $analisis_ausentismo_grupo_tres->total_dias_habiles_ausentismo_periodo_calculo,
+                            'descuento_en_turnos'                               => $analisis_ausentismo_grupo_tres->descuento_en_turnos
                         ];
                         array_push($ausentismos, $data);
                     }
@@ -89,6 +103,7 @@ class GrupoTresImport implements ToCollection, WithHeadingRow, WithValidation
                 $this->data = $ausentismos;
             }
         } catch (\Exception $error) {
+            Log::info($error->getMessage());
             return $error->getMessage();
         }
     }

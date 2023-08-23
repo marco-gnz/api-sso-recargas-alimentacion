@@ -13,6 +13,7 @@ use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithValidation;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use App\Http\Controllers\Admin\Esquema\EsquemaController;
+use App\Http\Controllers\Admin\Calculos\AnalisisRegistroController;
 use Illuminate\Support\Facades\Log;
 
 class GrupoTresImportStore implements ToModel, WithHeadingRow, WithValidation
@@ -68,38 +69,39 @@ class GrupoTresImportStore implements ToModel, WithHeadingRow, WithValidation
             if ($funcionario && $tipo_ausentismo) {
                 $esquema_controller     = new EsquemaController;
                 $esquema                = $esquema_controller->returnEsquema($funcionario->id, $this->recarga->id);
+                $turnante               = $esquema ? ($esquema->es_turnante != 2 ? true : false) : false;
 
                 $hora_inicio            = Carbon::parse($this->transformTime($row[$this->hora_inicio]));
                 $hora_termino           = Carbon::parse($this->transformTime($row[$this->hora_termino]));
                 $fecha_inicio           = Carbon::parse($this->transformDate($row[strtolower($this->fecha_inicio)]));
                 $fecha_termino          = Carbon::parse($this->transformDate($row[strtolower($this->fecha_termino)]));
-                $calculo                = $this->totalDiasEnPeriodo($fecha_inicio->format('d-m-Y'), $fecha_termino->format('d-m-Y'));
-                $descuento              = $this->calculoDescuento($row, $esquema, $tipo_ausentismo, $calculo[4], $calculo[5]);
 
-                $ini_date_time          = Carbon::parse($calculo[4])->format('Y-m-d') . ' ' . Carbon::parse($this->transformTime($row[$this->hora_inicio]))->format('H:i:s');
-                $ter_date_time          = Carbon::parse($calculo[5])->format('Y-m-d') . ' ' . Carbon::parse($this->transformTime($row[$this->hora_termino]))->format('H:i:s');
-                $ini_date_time          = Carbon::parse($ini_date_time);
-                $ter_date_time          = Carbon::parse($ter_date_time);
-                $diferenciaEnHoras = $ini_date_time->diffInHours($ter_date_time);
+                $analisis_registro_controller       = new AnalisisRegistroController;
+                $analisis_ausentismo_grupo_tres      = $analisis_registro_controller->analisisAusentismoGrupoTres($turnante, $this->recarga, $funcionario, $fecha_inicio, $fecha_termino, $hora_inicio, $hora_termino);
 
                 $data = [
-                    'fecha_inicio'                                      => $calculo[1] != null ? Carbon::parse($calculo[1])->format('Y-m-d') : NULL,
-                    'fecha_termino'                                     => $calculo[2] != null ? Carbon::parse($calculo[2])->format('Y-m-d') : NULL,
-                    'fecha_inicio_periodo'                              => $calculo[4] != null ? Carbon::parse($calculo[4])->format('Y-m-d') : NULL,
-                    'fecha_termino_periodo'                             => $calculo[5] != null ? Carbon::parse($calculo[5])->format('Y-m-d') : NULL,
-                    'total_dias_ausentismo'                             => $calculo[0],
-                    'total_dias_ausentismo_periodo'                     => $descuento->total_descuento,
-                    'total_dias_habiles_ausentismo_periodo'             => $descuento->total_descuento_habiles,
-                    'hora_inicio'                                       => $hora_inicio->format('H:i:s'),
-                    'hora_termino'                                      => $hora_termino->format('H:i:s'),
-                    'total_horas_ausentismo'                            => $diferenciaEnHoras,
+                    'fecha_inicio'                          => $analisis_ausentismo_grupo_tres->fecha_inicio->format('Y-m-d'),
+                    'fecha_termino'                         => $analisis_ausentismo_grupo_tres->fecha_termino->format('Y-m-d'),
+                    'fecha_inicio_periodo'                  => $analisis_ausentismo_grupo_tres->fecha_inicio_periodo->format('Y-m-d'),
+                    'fecha_termino_periodo'                 => $analisis_ausentismo_grupo_tres->fecha_termino_periodo->format('Y-m-d'),
+                    'total_dias_ausentismo'                 => $analisis_ausentismo_grupo_tres->total_dias_ausentismo,
+
+                    'total_dias_ausentismo_periodo'                 => $analisis_ausentismo_grupo_tres->total_dias_ausentismo_periodo,
+                    'total_dias_habiles_ausentismo_periodo'         => $analisis_ausentismo_grupo_tres->total_dias_habiles_ausentismo_periodo,
+                    'total_dias_ausentismo_periodo_turno'           => $analisis_ausentismo_grupo_tres->total_dias_ausentismo_periodo_turno,
+                    'total_dias_habiles_ausentismo_periodo_turno'   => $analisis_ausentismo_grupo_tres->total_dias_habiles_ausentismo_periodo_turno,
+                    'tiene_descuento'                               => $analisis_ausentismo_grupo_tres->descuento_value,
+                    'descuento_turno_libre'                         => $analisis_ausentismo_grupo_tres->descuento_turno_libre_value,
+
+                    'hora_inicio'                                       => $analisis_ausentismo_grupo_tres->hora_inicio,
+                    'hora_termino'                                      => $analisis_ausentismo_grupo_tres->hora_termino,
+                    'total_horas_ausentismo'                            => $analisis_ausentismo_grupo_tres->diferencia_en_horas,
                     'user_id'                                           => $funcionario->id,
                     'tipo_ausentismo_id'                                => $tipo_ausentismo->id,
-                    'regla_id'                                          => $descuento->regla ? $descuento->regla->id : null,
-                    'grupo_id'                                          => $descuento->regla ? $descuento->regla->grupoAusentismo->id : 3,
+                    'regla_id'                                          => $analisis_ausentismo_grupo_tres->regla ? $analisis_ausentismo_grupo_tres->regla->id : null,
+                    'grupo_id'                                          => $analisis_ausentismo_grupo_tres->regla ? $analisis_ausentismo_grupo_tres->regla->grupoAusentismo->id : 3,
                     'recarga_id'                                        => $this->recarga->id,
                     'esquema_id'                                        => $esquema ? $esquema->id : NULL,
-                    'tiene_descuento'                                   => $descuento->descuento ? true : false
                 ];
 
                 $ausentismo = Ausentismo::create($data);

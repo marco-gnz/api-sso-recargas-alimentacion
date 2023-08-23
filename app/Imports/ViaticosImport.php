@@ -12,6 +12,10 @@ use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithValidation;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
+use App\Http\Controllers\Admin\Calculos\AnalisisRegistroController;
+use App\Http\Controllers\Admin\Esquema\EsquemaController;
+use App\Models\Esquema;
+use Illuminate\Support\Facades\Log;
 
 class ViaticosImport implements WithValidation, ToCollection, WithHeadingRow
 {
@@ -63,23 +67,28 @@ class ViaticosImport implements WithValidation, ToCollection, WithHeadingRow
                     $funcionario        = User::where('rut', $rut)->first();
 
                     if ($funcionario) {
-                        $fecha_inicio       = Carbon::parse($this->transformDate($row[$this->fecha_inicio]));
-                        $fecha_termino      = Carbon::parse($this->transformDate($row[$this->fecha_termino]));
-                        $fecha_resolucion   = Carbon::parse($this->transformDate($row[$this->fecha_resolucion]));
-                        $days               = $fecha_inicio->diffInDays($fecha_termino) + 1;
+                        $esquema_controller                 = new EsquemaController;
+                        $esquema                            = $esquema_controller->returnEsquema($funcionario->id, $this->recarga->id);
+                        $turnante                           = $esquema ? ($esquema->es_turnante != 2 ? true : false) : null;
+
+                        $fecha_inicio                       = Carbon::parse($this->transformDate($row[$this->fecha_inicio]));
+                        $fecha_termino                      = Carbon::parse($this->transformDate($row[$this->fecha_termino]));
+                        $fecha_resolucion                   = Carbon::parse($this->transformDate($row[$this->fecha_resolucion]));
+                        $analisis_registro_controller       = new AnalisisRegistroController;
+                        $analisis_viaticos                  = $analisis_registro_controller->analisisViaticos($turnante, $this->recarga, $funcionario, $fecha_inicio, $fecha_termino);
 
                         $data = [
-                            'nombres'                   => $funcionario->nombre_completo,
-                            'fecha_inicio'              => $fecha_inicio->format('d-m-Y'),
-                            'fecha_termino'             => $fecha_termino->format('d-m-Y'),
-                            'dias'                      => $days,
-                            'jornada'                   => $row[$this->jornada],
-                            'tipo_resolucion'           => $row[$this->tipo_resolucion],
-                            'numero_resolucion'         => $row[$this->numero_resolucion],
-                            'fecha_resolucion'          => $fecha_resolucion->format('d-m-Y'),
-                            'tipo_comision'             => $row[$this->tipo_comision],
-                            'motivo_viatico'            => $row[$this->motivo_viatico],
-                            'valor_viatico'             => $row[$this->valor_viatico],
+                            'nombres'                                           => $funcionario->nombre_completo,
+                            'turnante'                                          => $esquema ? Esquema::TURNANTE_NOM[$esquema->es_turnante] : '--',
+                            'fecha'                                             => "{$analisis_viaticos->fecha_inicio->format('d-m-Y')} / {$analisis_viaticos->fecha_termino->format('d-m-Y')}",
+                            'jornada'                                           => $row[$this->jornada],
+                            'tipo_comision'                                     => $row[$this->tipo_comision],
+                            'motivo_viatico'                                    => $row[$this->motivo_viatico],
+                            'valor_viatico'                                     => $row[$this->valor_viatico],
+                            'fecha_periodo'                                     => "{$analisis_viaticos->fecha_inicio_periodo->format('d-m-Y')} / {$analisis_viaticos->fecha_termino_periodo->format('d-m-Y')}",
+                            'dias_naturales'                                    => $analisis_viaticos->total_dias_ausentismo_periodo_calculo,
+                            'total_dias_habiles_ausentismo_periodo'             => $analisis_viaticos->total_dias_habiles_ausentismo_periodo_calculo,
+                            'descuento_en_turnos'                               => $analisis_viaticos->descuento_en_turnos ? 'Si' : 'No'
                         ];
                         array_push($viaticos, $data);
                     }

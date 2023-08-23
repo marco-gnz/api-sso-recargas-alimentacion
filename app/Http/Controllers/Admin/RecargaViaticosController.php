@@ -49,7 +49,10 @@ class RecargaViaticosController extends Controller
                 ->withCount('esquemas')
                 ->firstOrFail();
 
-            $viaticos = $recarga->viaticos()->input($input_query)->orderBy('valor_viatico', 'asc')->paginate(50);
+            $viaticos = $recarga->viaticos()->input($input_query)
+            ->descuento($request->descuento)
+            ->descuentoTurnoLibre($request->descuento_turno_libre)
+            ->orderBy('valor_viatico', 'asc')->paginate(50);
 
             return response()->json(
                 array(

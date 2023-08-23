@@ -18,6 +18,7 @@ use App\Http\Resources\FuncionarioTurnosResource;
 use App\Http\Resources\FuncionarioViaticosResource;
 use App\Models\Esquema;
 use Illuminate\Support\Facades\DB;
+use App\Http\Controllers\Admin\Calculos\ActualizarEsquemaController;
 
 class RecargaResumenController extends Controller
 {
@@ -220,6 +221,7 @@ class RecargaResumenController extends Controller
                 ->horaContrato($request->horas)
                 ->tipoAusentismo($request->tipo_ausentismo)
                 ->centroCostoContrato($request->centro_costo)
+                ->descuentoTurnoLibre($request->descuento_turno_libre)
                 ->with($withReReglas);
 
             $ordenamientos = $request->ordenamiento;
@@ -316,21 +318,33 @@ class RecargaResumenController extends Controller
             if ($esquema) {
                 $update  = $esquema->update(['es_turnante_value' => !$esquema->es_turnante_value]);
                 $esquema = $esquema->fresh();
+
+
                 if ($update) {
+                    $cartola_controller = new ActualizarEsquemaController;
+
+                    $update_esquema_1 = $cartola_controller->updateAusentismosGrupoUno($esquema->funcionario, $esquema->recarga, 1);
+                    $update_esquema_2 = $cartola_controller->updateAusentismosGrupoDos($esquema->funcionario, $esquema->recarga, 2);
+                    $update_esquema_3 = $cartola_controller->updateAusentismosGrupoTres($esquema->funcionario, $esquema->recarga, 3);
+                    $update_esquema_4 = $cartola_controller->updateEsquemaViaticos($esquema->funcionario, $esquema->recarga, 3);
+
+
+                    $esquema = $esquema->fresh();
+
                     $data_turnante = [
                         'calculo_contrato'   => $esquema->total_dias_contrato,
-                        'calculo_grupo_uno'  => $esquema->total_dias_grupo_uno,
-                        'calculo_grupo_dos'  => $esquema->total_dias_grupo_dos,
-                        'calculo_grupo_tres' => $esquema->total_dias_grupo_tres,
-                        'calculo_viaticos'   => $esquema->total_dias_viaticos
+                        'calculo_grupo_uno'  => $update_esquema_1->total_dias_grupo_uno,
+                        'calculo_grupo_dos'  => $update_esquema_2->total_dias_grupo_dos,
+                        'calculo_grupo_tres' => $update_esquema_3->total_dias_grupo_tres,
+                        'calculo_viaticos'   => $update_esquema_4->calculo_viaticos
                     ];
 
                     $data_no_turnante = [
                         'calculo_contrato'   => $esquema->total_dias_habiles_contrato,
-                        'calculo_grupo_uno'  => $esquema->total_dias_habiles_grupo_uno,
-                        'calculo_grupo_dos'  => $esquema->total_dias_habiles_grupo_dos,
-                        'calculo_grupo_tres' => $esquema->total_dias_habiles_grupo_tres,
-                        'calculo_viaticos'   => $esquema->total_dias_habiles_viaticos
+                        'calculo_grupo_uno'  => $update_esquema_1->total_dias_habiles_grupo_uno,
+                        'calculo_grupo_dos'  => $update_esquema_2->total_dias_habiles_grupo_dos,
+                        'calculo_grupo_tres' => $update_esquema_3->total_dias_habiles_grupo_tres,
+                        'calculo_viaticos'   => $update_esquema_4->calculo_viaticos
                     ];
 
                     if ($esquema->es_turnante_value) {
@@ -678,6 +692,7 @@ class RecargaResumenController extends Controller
         try {
             $total_dias_grupo_uno           = 0;
             $total_dias_habiles_grupo_uno   = 0;
+            $turnante                       = $esquema ? ($esquema->es_turnante_value) : null;
 
             $all_ausentismos = $esquema->funcionario->ausentismos()
                 ->whereIn('recarga_id', $ids_recarga)
@@ -689,42 +704,80 @@ class RecargaResumenController extends Controller
                     $item->save();
                 });
             }
+            if ($turnante) {
+                $ausentismos_not_tipo_dias = $esquema->funcionario->ausentismos()
+                    ->whereIn('recarga_id', $ids_recarga)
+                    ->where('grupo_id', 1)
+                    ->where('tiene_descuento', true)
+                    ->whereHas('regla', function ($query) {
+                        $query->whereNull('tipo_dias');
+                    })
+                    /* ->whereNull('esquema_id') */;
 
-            $ausentismos_not_tipo_dias = $esquema->funcionario->ausentismos()
-                ->whereIn('recarga_id', $ids_recarga)
-                ->where('grupo_id', 1)
-                ->where('tiene_descuento', true)
-                ->whereHas('regla', function ($query) {
-                    $query->whereNull('tipo_dias');
-                })
-                ->whereNull('esquema_id');
+                $ausentismos_naturales = $esquema->funcionario->ausentismos()
+                    ->whereIn('recarga_id', $ids_recarga)
+                    ->where('grupo_id', 1)
+                    ->where('tiene_descuento', true)
+                    ->whereHas('regla', function ($query) {
+                        $query->where('active_tipo_dias', true)
+                            ->where('tipo_dias', false);
+                    })
+                    /* ->whereNull('esquema_id') */
+                    ->sum('total_dias_ausentismo_periodo_turno');
 
-            $ausentismos_naturales = $esquema->funcionario->ausentismos()
-                ->whereIn('recarga_id', $ids_recarga)
-                ->where('grupo_id', 1)
-                ->where('tiene_descuento', true)
-                ->whereHas('regla', function ($query) {
-                    $query->where('active_tipo_dias', true)
-                        ->where('tipo_dias', false);
-                })
-                ->whereNull('esquema_id')
-                ->sum('total_dias_ausentismo_periodo');
-
-            $ausentismos_habiles = $esquema->funcionario->ausentismos()
-                ->whereIn('recarga_id', $ids_recarga)
-                ->where('grupo_id', 1)
-                ->where('tiene_descuento', true)
-                ->whereHas('regla', function ($query) {
-                    $query->where('active_tipo_dias', true)
-                        ->where('tipo_dias', true);
-                })
-                ->whereNull('esquema_id')
-                ->sum('total_dias_habiles_ausentismo_periodo');
+                $ausentismos_habiles = $esquema->funcionario->ausentismos()
+                    ->whereIn('recarga_id', $ids_recarga)
+                    ->where('grupo_id', 1)
+                    ->where('tiene_descuento', true)
+                    ->whereHas('regla', function ($query) {
+                        $query->where('active_tipo_dias', true)
+                            ->where('tipo_dias', true);
+                    })
+                    /* ->whereNull('esquema_id') */
+                    ->sum('total_dias_habiles_ausentismo_periodo_turno');
 
 
-            $total_tipo_dias                = $ausentismos_naturales + $ausentismos_habiles;
-            $total_dias_grupo_uno           = $total_tipo_dias + $ausentismos_not_tipo_dias->sum('total_dias_ausentismo_periodo');
-            $total_dias_habiles_grupo_uno   = $total_tipo_dias + $ausentismos_not_tipo_dias->sum('total_dias_habiles_ausentismo_periodo');
+                $total_tipo_dias                = $ausentismos_naturales + $ausentismos_habiles;
+                $total_dias_grupo_uno           = $total_tipo_dias + $ausentismos_not_tipo_dias->sum('total_dias_ausentismo_periodo_turno');
+                $total_dias_habiles_grupo_uno   = $total_tipo_dias + $ausentismos_not_tipo_dias->sum('total_dias_habiles_ausentismo_periodo_turno');
+            } else {
+                $ausentismos_not_tipo_dias = $esquema->funcionario->ausentismos()
+                    ->whereIn('recarga_id', $ids_recarga)
+                    ->where('grupo_id', 1)
+                    ->where('tiene_descuento', true)
+                    ->whereHas('regla', function ($query) {
+                        $query->whereNull('tipo_dias');
+                    })
+                    /* ->whereNull('esquema_id') */;
+
+                $ausentismos_naturales = $esquema->funcionario->ausentismos()
+                    ->whereIn('recarga_id', $ids_recarga)
+                    ->where('grupo_id', 1)
+                    ->where('tiene_descuento', true)
+                    ->whereHas('regla', function ($query) {
+                        $query->where('active_tipo_dias', true)
+                            ->where('tipo_dias', false);
+                    })
+                    /* ->whereNull('esquema_id') */
+                    ->sum('total_dias_ausentismo_periodo');
+
+                $ausentismos_habiles = $esquema->funcionario->ausentismos()
+                    ->whereIn('recarga_id', $ids_recarga)
+                    ->where('grupo_id', 1)
+                    ->where('tiene_descuento', true)
+                    ->whereHas('regla', function ($query) {
+                        $query->where('active_tipo_dias', true)
+                            ->where('tipo_dias', true);
+                    })
+                    /* ->whereNull('esquema_id') */
+                    ->sum('total_dias_habiles_ausentismo_periodo');
+
+
+                $total_tipo_dias                = $ausentismos_naturales + $ausentismos_habiles;
+                $total_dias_grupo_uno           = $total_tipo_dias + $ausentismos_not_tipo_dias->sum('total_dias_ausentismo_periodo');
+                $total_dias_habiles_grupo_uno   = $total_tipo_dias + $ausentismos_not_tipo_dias->sum('total_dias_habiles_ausentismo_periodo');
+            }
+
 
             $data = [
                 'total_dias_grupo_uno'           => $total_dias_grupo_uno,
@@ -761,17 +814,28 @@ class RecargaResumenController extends Controller
                 ->whereNull('esquema_id')
                 ->get();
 
-            $ausentismos->each(function ($ausentismo) use ($esquema) {
+            $turnante                       = $esquema ? ($esquema->es_turnante_value) : null;
+
+            $ausentismos = $ausentismos->each(function ($ausentismo) use ($esquema) {
                 $ausentismo->esquema_id = $esquema->id;
                 $ausentismo->save();
             });
 
-            $es_turnante = $esquema ? ($esquema->es_turnante != 2 ? true : false) : false;
+            $ausentismos = $esquema->funcionario->ausentismos()
+                ->whereIn('recarga_id', $ids_recarga)
+                ->where('grupo_id', 2)
+                ->where('tiene_descuento', true)
+                ->get();
 
             foreach ($ausentismos as $ausentismo) {
                 if ($ausentismo->regla) {
-                    $total_dias_grupo_dos           += $ausentismo->total_dias_ausentismo_periodo;
-                    $total_dias_habiles_grupo_dos   += $ausentismo->total_dias_habiles_ausentismo_periodo;
+                    if ($turnante) {
+                        $total_dias_grupo_dos           += $ausentismo->total_dias_ausentismo_periodo_turno;
+                        $total_dias_habiles_grupo_dos   += $ausentismo->total_dias_habiles_ausentismo_periodo_turno;
+                    } else {
+                        $total_dias_grupo_dos           += $ausentismo->total_dias_ausentismo_periodo;
+                        $total_dias_habiles_grupo_dos   += $ausentismo->total_dias_habiles_ausentismo_periodo;
+                    }
                 }
             }
             $data = [
@@ -805,14 +869,27 @@ class RecargaResumenController extends Controller
                 ->whereNull('esquema_id')
                 ->get();
 
+            $turnante                       = $esquema ? ($esquema->es_turnante_value) : null;
+
             $ausentismos->each(function ($ausentismo) use ($esquema) {
                 $ausentismo->esquema_id = $esquema->id;
                 $ausentismo->save();
             });
 
+            $ausentismos = $esquema->funcionario->ausentismos()
+                ->whereIn('recarga_id', $ids_recarga)
+                ->where('grupo_id', 3)
+                ->where('tiene_descuento', true)
+                ->get();
+
             foreach ($ausentismos as $ausentismo) {
-                $total_dias_grupo_tres           += $ausentismo->total_dias_ausentismo_periodo;
-                $total_dias_habiles_grupo_tres   += $ausentismo->total_dias_habiles_ausentismo_periodo;
+                if ($turnante) {
+                    $total_dias_grupo_tres           += $ausentismo->total_dias_ausentismo_periodo_turno;
+                    $total_dias_habiles_grupo_tres   += $ausentismo->total_dias_habiles_ausentismo_periodo_turno;
+                } else {
+                    $total_dias_grupo_tres           += $ausentismo->total_dias_ausentismo_periodo;
+                    $total_dias_habiles_grupo_tres   += $ausentismo->total_dias_habiles_ausentismo_periodo;
+                }
             }
 
             $data = [
@@ -846,11 +923,20 @@ class RecargaResumenController extends Controller
                     $viatico->save();
                 });
             }
-            $data = [
-                'total_dias_viaticos'           => $viaticos->where('valor_viatico', '>', 0)->sum('total_dias_periodo'),
-                'total_dias_habiles_viaticos'   => $viaticos->where('valor_viatico', '>', 0)->sum('total_dias_habiles_periodo'),
-                'viaticos_n_registros'          => count($viaticos),
-            ];
+
+            if ($turnante) {
+                $data = [
+                    'total_dias_viaticos'           => $viaticos->where('valor_viatico', '>', 0)->sum('total_dias_periodo_turno'),
+                    'total_dias_habiles_viaticos'   => $viaticos->where('valor_viatico', '>', 0)->sum('total_dias_habiles_periodo_turno'),
+                    'viaticos_n_registros'          => count($viaticos),
+                ];
+            } else {
+                $data = [
+                    'total_dias_viaticos'           => $viaticos->where('valor_viatico', '>', 0)->sum('total_dias_periodo'),
+                    'total_dias_habiles_viaticos'   => $viaticos->where('valor_viatico', '>', 0)->sum('total_dias_habiles_periodo'),
+                    'viaticos_n_registros'          => count($viaticos),
+                ];
+            }
             $update  = $esquema->update($data);
             $esquema = $esquema->fresh();
 
@@ -866,14 +952,12 @@ class RecargaResumenController extends Controller
     private function totalDiasViaticos($esquema)
     {
         $total_viaticos  = 0;
-        switch ($esquema->es_turnante) {
+        switch ($esquema->es_turnante_value) {
             case 1:
-            case 3:
                 $total_viaticos = $esquema->total_dias_viaticos;
                 break;
-            case 2:
-                $total              = $esquema->total_dias_habiles_viaticos - $esquema->total_dias_feriados_viaticos;
-                $total_viaticos     = $total;
+            case 0:
+                $total_viaticos = $esquema->total_dias_habiles_viaticos;
                 break;
         }
         return $total_viaticos;
@@ -882,9 +966,8 @@ class RecargaResumenController extends Controller
     private function totalDiasAusentismoGrupo($esquema, $id_grupo)
     {
         $total_ausentismos  = 0;
-        switch ($esquema->es_turnante) {
+        switch ($esquema->es_turnante_value) {
             case 1:
-            case 3:
                 switch ($id_grupo) {
                     case 1:
                         $total_ausentismos = $esquema->total_dias_grupo_uno;
@@ -897,7 +980,7 @@ class RecargaResumenController extends Controller
                         break;
                 }
                 break;
-            case 2:
+            case 0:
                 switch ($id_grupo) {
                     case 1:
                         $total              = $esquema->total_dias_habiles_grupo_uno - $esquema->total_dias_feriados_grupo_uno;

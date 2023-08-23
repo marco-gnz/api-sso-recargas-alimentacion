@@ -22,6 +22,9 @@ use Carbon\Carbon;
 use Maatwebsite\Excel\Concerns\ToArray;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
+use App\Http\Controllers\Admin\Calculos\AnalisisRegistroController;
+use App\Http\Controllers\Admin\Esquema\EsquemaController;
+
 
 class GrupoDosImport implements ToCollection, WithHeadingRow, WithValidation
 {
@@ -76,17 +79,9 @@ class GrupoDosImport implements ToCollection, WithHeadingRow, WithValidation
                     $meridiano          = Meridiano::where('codigo', $row[$this->meridiano])->orWhere('nombre', $row[$this->meridiano])->first();
 
                     if ($funcionario && $tipo_ausentismo && $meridiano) {
-                        $esquema    = $funcionario->esquemas()->where('recarga_id', $this->recarga->id)->first();
-                        $turnante   = $esquema ? ($esquema->es_turnante != 2 ? true : false) : false;
-                        $regla      = $this->recarga->reglas()
-                            ->where('turno_funcionario', $turnante)
-                            ->where('grupo_id', 2)
-                            ->where('tipo_ausentismo_id', $tipo_ausentismo->id)
-                            ->whereHas('meridianos', function ($query) use ($meridiano) {
-                                $query->where('meridiano_regla.meridiano_id', $meridiano->id)
-                                    ->where('meridiano_regla.active', true);
-                            })
-                            ->first();
+                        $esquema_controller     = new EsquemaController;
+                        $esquema                = $esquema_controller->returnEsquema($funcionario->id, $this->recarga->id);
+                        $turnante               = $esquema ? ($esquema->es_turnante != 2 ? true : false) : false;
 
                         $fecha_inicio   = Carbon::parse($this->transformDate($row[$this->fecha_inicio]));
                         $fecha_termino  = Carbon::parse($this->transformDate($row[$this->fecha_termino]));
@@ -100,14 +95,20 @@ class GrupoDosImport implements ToCollection, WithHeadingRow, WithValidation
                             }
                         }
 
+                        $analisis_registro_controller       = new AnalisisRegistroController;
+                        $analisis_ausentismo_grupo_dos      = $analisis_registro_controller->analisisAusentismoGrupoDos($turnante, $this->recarga, $funcionario, $fecha_inicio, $fecha_termino, $meridiano, $tipo_ausentismo);
+
                         $data = [
-                            'nombres'                   => $funcionario->nombre_completo,
-                            'turno'                     => $esquema ? Esquema::TURNANTE_NOM[$esquema->es_turnante] : '--',
-                            'nombre_tipo_ausentismo'    => $tipo_ausentismo->nombre,
-                            'fecha_inicio'              => $fecha_inicio->format('d-m-Y'),
-                            'fecha_termino'             => $fecha_termino->format('d-m-Y'),
-                            'meridiano'                 => $meridiano->codigo,
-                            'descuento'                 => $regla ? 'Si' : 'No'
+                            'nombres'                                           => $funcionario->nombre_completo,
+                            'turnante'                                          => $esquema ? Esquema::TURNANTE_NOM[$esquema->es_turnante] : '--',
+                            'fecha_ausentismo'                                  => "{$analisis_ausentismo_grupo_dos->fecha_inicio->format('d-m-Y')} / {$analisis_ausentismo_grupo_dos->fecha_termino->format('d-m-Y')}",
+                            'nombre_tipo_ausentismo'                            => $tipo_ausentismo ? $tipo_ausentismo->nombre : '--',
+                            'fecha_ausentismo_periodo'                          => "{$analisis_ausentismo_grupo_dos->fecha_inicio_periodo->format('d-m-Y')} / {$analisis_ausentismo_grupo_dos->fecha_termino_periodo->format('d-m-Y')}",
+                            'dias_naturales'                                    => $analisis_ausentismo_grupo_dos->total_dias_ausentismo_periodo_calculo,
+                            'total_dias_habiles_ausentismo_periodo'             => $analisis_ausentismo_grupo_dos->total_dias_habiles_ausentismo_periodo_calculo,
+                            'descuento_en_turnos'                               => $analisis_ausentismo_grupo_dos->descuento_en_turnos ? 'Si' : 'No',
+                            'meridiano'                                         => $meridiano->codigo,
+                            'descuento'                                         => $analisis_ausentismo_grupo_dos->descuento_value ? 'Si' : 'No'
                         ];
                         array_push($ausentismos, $data);
                     }

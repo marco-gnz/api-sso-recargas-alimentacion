@@ -10,6 +10,9 @@ use Maatwebsite\Excel\Concerns\WithValidation;
 use Carbon\Carbon;
 use App\Http\Controllers\Admin\Calculos\ActualizarEsquemaController;
 use App\Http\Controllers\Admin\Esquema\EsquemaController;
+use App\Http\Controllers\Admin\Calculos\AnalisisRegistroController;
+use App\Models\Esquema;
+use Illuminate\Support\Facades\Log;
 
 class ViaticosImportStore implements ToModel, WithHeadingRow, WithValidation
 {
@@ -115,26 +118,39 @@ class ViaticosImportStore implements ToModel, WithHeadingRow, WithValidation
             if ($funcionario) {
                 $esquema_controller     = new EsquemaController;
                 $esquema                = $esquema_controller->returnEsquema($funcionario->id, $this->recarga->id);
+                $turnante                = $esquema ? ($esquema->es_turnante != 2 ? true : false) : null;
+
                 $fecha_inicio       = Carbon::parse($this->transformDate($row[$this->fecha_inicio]));
                 $fecha_termino      = Carbon::parse($this->transformDate($row[$this->fecha_termino]));
                 $fecha_resolucion   = Carbon::parse($this->transformDate($row[$this->fecha_resolucion]));
-                $calculo            = $this->totalDiasEnPeriodo($fecha_inicio, $fecha_termino);
+                /* $calculo            = $this->totalDiasEnPeriodo($fecha_inicio, $fecha_termino); */
+
+                $analisis_registro_controller       = new AnalisisRegistroController;
+                $analisis_viaticos                  = $analisis_registro_controller->analisisViaticos($turnante, $this->recarga, $funcionario, $fecha_inicio, $fecha_termino);
 
                 $data = [
-                    'user_id'                   => $funcionario->id,
-                    'fecha_inicio'              => $fecha_inicio->format('Y-m-d'),
-                    'fecha_termino'             => $fecha_termino->format('Y-m-d'),
-                    'fecha_inicio_periodo'      => $calculo[4] != null ? Carbon::parse($calculo[4])->format('Y-m-d') : NULL,
-                    'fecha_termino_periodo'     => $calculo[5] != null ? Carbon::parse($calculo[5])->format('Y-m-d') : NULL,
-                    'jornada'                   => $row[$this->jornada],
-                    'tipo_resolucion'           => $row[$this->tipo_resolucion],
-                    'n_resolucion'              => $row[$this->numero_resolucion],
-                    'fecha_resolucion'          => $fecha_resolucion->format('Y-m-d'),
-                    'tipo_comision'             => $row[$this->tipo_comision],
-                    'motivo_viatico'            => $row[$this->motivo_viatico],
-                    'valor_viatico'             => $row[$this->valor_viatico],
-                    'recarga_id'                => $this->recarga->id,
-                    'esquema_id'                => $esquema ? $esquema->id : NULL
+                    'fecha_inicio'                          => $analisis_viaticos->fecha_inicio->format('Y-m-d'),
+                    'fecha_termino'                         => $analisis_viaticos->fecha_termino->format('Y-m-d'),
+                    'total_dias'                            => $analisis_viaticos->total_dias_ausentismo_periodo,
+                    'fecha_inicio_periodo'                  => $analisis_viaticos->fecha_inicio_periodo->format('Y-m-d'),
+                    'fecha_termino_periodo'                 => $analisis_viaticos->fecha_termino_periodo->format('Y-m-d'),
+
+                    'total_dias_periodo'                    => $analisis_viaticos->total_dias_ausentismo_periodo,
+                    'total_dias_habiles_periodo'            => $analisis_viaticos->total_dias_habiles_ausentismo_periodo,
+                    'total_dias_periodo_turno'              => $analisis_viaticos->total_dias_ausentismo_periodo_turno,
+                    'total_dias_habiles_periodo_turno'      => $analisis_viaticos->total_dias_habiles_ausentismo_periodo_turno,
+                    'descuento_turno_libre'                 => $analisis_viaticos->descuento_en_turnos,
+
+                    'jornada'                               => $row[$this->jornada],
+                    'tipo_resolucion'                       => $row[$this->tipo_resolucion],
+                    'n_resolucion'                          => $row[$this->numero_resolucion],
+                    'fecha_resolucion'                      => $fecha_resolucion->format('Y-m-d'),
+                    'tipo_comision'                         => $row[$this->tipo_comision],
+                    'motivo_viatico'                        => $row[$this->motivo_viatico],
+                    'valor_viatico'                         => $row[$this->valor_viatico],
+                    'recarga_id'                            => $this->recarga->id,
+                    'esquema_id'                            => $esquema ? $esquema->id : NULL,
+                    'user_id'                               => $funcionario->id,
                 ];
 
                 $viatico = Viatico::create($data);
@@ -147,6 +163,7 @@ class ViaticosImportStore implements ToModel, WithHeadingRow, WithValidation
                 }
             }
         } catch (\Exception $error) {
+            Log::info($error->getMessage());
             return $error->getMessage();
         }
     }

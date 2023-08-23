@@ -24,6 +24,10 @@ class Ausentismo extends Model
         'total_dias_ausentismo_periodo',
         'total_dias_habiles_ausentismo_periodo',
         'total_dias_habiles_ausentismo_periodo_meridiano',
+        'total_dias_ausentismo_periodo_turno',
+        'total_dias_habiles_ausentismo_periodo_turno',
+        'total_dias_habiles_ausentismo_periodo_meridiano_turno',
+        'descuento_turno_libre',
         'hora_inicio',
         'hora_termino',
         'total_horas_ausentismo',
@@ -107,6 +111,7 @@ class Ausentismo extends Model
             $days = 0;
             $inicio     = Carbon::parse($ausentismo->fecha_inicio_periodo)->format('Y-m-d');
             $termino    = Carbon::parse($ausentismo->fecha_termino_periodo)->format('Y-m-d');
+
             for ($i = $inicio; $i <= $termino; $i++) {
                 $i_format       = Carbon::parse($i)->isWeekend();
                 if ($i_format) {
@@ -120,19 +125,30 @@ class Ausentismo extends Model
             $total_dias_habiles_ausentismo_periodo              = ($ausentismo->total_dias_ausentismo_periodo - $days);
             $total_dias_habiles_ausentismo_periodo              = $total_dias_habiles_ausentismo_periodo <= 0 ? 0 : $total_dias_habiles_ausentismo_periodo;
 
-            if ($ausentismo->grupo_id != 3) {
-                $ausentismo->total_dias_habiles_ausentismo_periodo  = $total_dias_habiles_ausentismo_periodo;
+            if ($ausentismo->grupo_id === 3) {
+                $hora_inicio     = Carbon::parse($ausentismo->hora_inicio)->format('H:i:s');
+                $hora_termino    = Carbon::parse($ausentismo->hora_termino)->format('H:i:s');
+
+                $ini_date_time          = $inicio . ' ' . $hora_inicio;
+                $ter_date_time          = $termino . ' ' . $hora_termino;
+                $ini_date_time          = Carbon::parse($ini_date_time);
+                $ter_date_time          = Carbon::parse($ter_date_time);
+                $diferencia_en_horas    = $ini_date_time->diffInHours($ter_date_time);
+                $ausentismo->total_horas_ausentismo  = $diferencia_en_horas;
             }
+            /* if ($ausentismo->grupo_id != 3) {
+                $ausentismo->total_dias_habiles_ausentismo_periodo  = $total_dias_habiles_ausentismo_periodo;
+            } */
         });
 
-        static::created(function ($ausentismo) {
+        /* static::created(function ($ausentismo) {
             if ($ausentismo->grupo_id != 3) {
                 $feriados_count                                     = $ausentismo->recarga->feriados()->where('active', true)->whereBetween('fecha', [$ausentismo->fecha_inicio_periodo, $ausentismo->fecha_termino_periodo])->count();
                 $total                                              = $ausentismo->total_dias_habiles_ausentismo_periodo - $feriados_count;
                 $ausentismo->total_dias_habiles_ausentismo_periodo  = $total;
                 $ausentismo->save();
             }
-        });
+        }); */
 
         static::updating(function ($ausentismo) {
             $ausentismo->user_update_by    = Auth::user()->id;
@@ -193,6 +209,20 @@ class Ausentismo extends Model
     {
         if ($ids) {
             return $query->whereIn('tipo_ausentismo_id', $ids);
+        }
+    }
+
+    public function scopeDescuento($query, $descuento)
+    {
+        if ($descuento) {
+            return $query->whereIn('tiene_descuento', $descuento);
+        }
+    }
+
+    public function scopeDescuentoTurnoLibre($query, $array)
+    {
+        if ($array) {
+            return $query->whereIn('descuento_turno_libre', $array);
         }
     }
 }

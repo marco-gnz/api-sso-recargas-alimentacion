@@ -21,6 +21,7 @@ use Maatwebsite\Excel\Concerns\ToArray;
 use Illuminate\Support\Facades\Validator;
 use App\Http\Controllers\Admin\Esquema\EsquemaController;
 use App\Models\Esquema;
+use App\Http\Controllers\Admin\Calculos\AnalisisRegistroController;
 use Illuminate\Support\Facades\Log;
 
 class GrupoUnoImport implements ToCollection, WithHeadingRow, WithValidation
@@ -137,7 +138,7 @@ class GrupoUnoImport implements ToCollection, WithHeadingRow, WithValidation
                         $esquema_controller     = new EsquemaController;
                         $esquema                = $esquema_controller->returnEsquema($funcionario->id, $this->recarga->id);
                         $exist_tipo_ausentismo  = $this->existTipoAusentismoInGrupo($tipo_ausentismo);
-                        $turnante               = $esquema ? ($esquema->es_turnante != 2 ? true : false) : null;
+                        $turnante               = $esquema ? ($esquema->es_turnante != 2 ? true : false) : false;
 
                         $regla = $this->recarga->reglas()
                             ->where('grupo_id', 1)
@@ -149,26 +150,32 @@ class GrupoUnoImport implements ToCollection, WithHeadingRow, WithValidation
 
                         $compensatorio_dias = $this->validateFechaDiasCompensatoriosAndCompensacionTiempoLibre($rut, $tipo_ausentismo->nombre, $fecha_inicio, $fecha_termino);
 
+                        $analisis_registro_controller       = new AnalisisRegistroController;
+                        $analisis_ausentismo_grupo_uno      = $analisis_registro_controller->analisisAusentismoGrupoUno($turnante, $this->recarga, $funcionario, $fecha_inicio, $fecha_termino);
                         if (!$compensatorio_dias && $regla) {
                             $data = [
-                                'nombres'                   => $funcionario->nombre_completo,
-                                'turnante'                  => $esquema ? Esquema::TURNANTE_NOM[$esquema->es_turnante] : '--',
-                                'nombre_tipo_ausentismo'    => $tipo_ausentismo ? $tipo_ausentismo->nombre : '--',
-                                'grupo'                     => $regla ? $regla->grupoAusentismo->nombre : '--',
-                                'tipo_dias'                 => $regla ? ($regla->active_tipo_dias ? ($regla->tipo_dias ? 'Hábiles' : 'Naturales') : 'FuncionarioTurno') : 'FuncionarioTurno',
-                                'fecha_inicio'              => $fecha_inicio->format('d-m-Y'),
-                                'fecha_termino'             => $fecha_termino->format('d-m-Y')
+                                'nombres'                                           => $funcionario->nombre_completo,
+                                'turnante'                                          => $esquema ? Esquema::TURNANTE_NOM[$esquema->es_turnante] : '--',
+                                'fecha_ausentismo'                                  => "{$analisis_ausentismo_grupo_uno->fecha_inicio->format('d-m-Y')} / {$analisis_ausentismo_grupo_uno->fecha_termino->format('d-m-Y')}",
+                                'nombre_tipo_ausentismo'                            => $tipo_ausentismo ? $tipo_ausentismo->nombre : '--',
+                                'tipo_dias'                                         => $regla ? ($regla->active_tipo_dias ? ($regla->tipo_dias ? 'Hábiles' : 'Naturales') : 'FuncionarioTurno') : 'FuncionarioTurno',
+                                'fecha_ausentismo_periodo'                          => "{$analisis_ausentismo_grupo_uno->fecha_inicio_periodo->format('d-m-Y')} / {$analisis_ausentismo_grupo_uno->fecha_termino_periodo->format('d-m-Y')}",
+                                'dias_naturales'                                    => $analisis_ausentismo_grupo_uno->total_dias_ausentismo_periodo_calculo,
+                                'total_dias_habiles_ausentismo_periodo'             => $analisis_ausentismo_grupo_uno->total_dias_habiles_ausentismo_periodo_calculo,
+                                'descuento_en_turnos'                               => $analisis_ausentismo_grupo_uno->descuento_en_turnos ? 'Si' : 'No'
                             ];
                             array_push($ausentismos, $data);
                         } else {
                             $data = [
-                                'nombres'                   => $funcionario->nombre_completo,
-                                'turnante'                  => $esquema ? Esquema::TURNANTE_NOM[$esquema->es_turnante] : '--',
-                                'nombre_tipo_ausentismo'    => $tipo_ausentismo ? $tipo_ausentismo->nombre : '--',
-                                'grupo'                     => $regla ? $regla->grupoAusentismo->nombre : '--',
-                                'tipo_dias'                 => $regla ? ($regla->active_tipo_dias ? ($regla->tipo_dias ? 'Hábiles' : 'Naturales') : 'FuncionarioTurno') : 'FuncionarioTurno',
-                                'fecha_inicio'              => $fecha_inicio->format('d-m-Y'),
-                                'fecha_termino'             => $fecha_termino->format('d-m-Y')
+                                'nombres'                                           => $funcionario->nombre_completo,
+                                'turnante'                                          => $esquema ? Esquema::TURNANTE_NOM[$esquema->es_turnante] : '--',
+                                'fecha_ausentismo'                                  => "{$analisis_ausentismo_grupo_uno->fecha_inicio->format('d-m-Y')} / {$analisis_ausentismo_grupo_uno->fecha_termino->format('d-m-Y')}",
+                                'nombre_tipo_ausentismo'                            => $tipo_ausentismo ? $tipo_ausentismo->nombre : '--',
+                                'tipo_dias'                                         => $regla ? ($regla->active_tipo_dias ? ($regla->tipo_dias ? 'Hábiles' : 'Naturales') : 'FuncionarioTurno') : 'FuncionarioTurno',
+                                'fecha_ausentismo_periodo'                          => "{$analisis_ausentismo_grupo_uno->fecha_inicio_periodo->format('d-m-Y')} / {$analisis_ausentismo_grupo_uno->fecha_termino_periodo->format('d-m-Y')}",
+                                'dias_naturales'                                    => $analisis_ausentismo_grupo_uno->total_dias_ausentismo_periodo_calculo,
+                                'total_dias_habiles_ausentismo_periodo'             => $analisis_ausentismo_grupo_uno->total_dias_habiles_ausentismo_periodo_calculo,
+                                'descuento_en_turnos'                               => $analisis_ausentismo_grupo_uno->descuento_en_turnos ? 'Si' : 'No'
                             ];
                             array_push($ausentismos_sobrante, $data);
                         }
@@ -179,6 +186,7 @@ class GrupoUnoImport implements ToCollection, WithHeadingRow, WithValidation
             $this->data = $ausentismos;
             $this->data_sobrante = $ausentismos_sobrante;
         } catch (\Exception $error) {
+            Log::info($error->getMessage());
             return $error->getMessage();
         }
     }
@@ -276,16 +284,12 @@ class GrupoUnoImport implements ToCollection, WithHeadingRow, WithValidation
                 $query->where('active', true);
             })->first();
 
-            if($tiene){
-                Log::info($tiene);
+            if ($tiene) {
                 return (object) [
                     'ausentismo'       => $tiene,
                     'value'         => $tiene ? true : false
                 ];
-            }else{
-                Log::info('no tiene');
             }
-
         }
 
         return (object) [

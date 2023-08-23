@@ -44,7 +44,7 @@ class RecargaAusentismosController extends Controller
             $withFnAusentismos  = $this->withFnAusentismos($recarga);
             $grupos             = GrupoAusentismo::with($withFnAusentismos)->get();
 
-            $ausentismos                = $recarga->ausentismos()->where('grupo_id', $request->grupo)->input($input_query)->tipoAusentismo($request->tipo_ausentismo_id)->orderBy('id', 'asc')->paginate(50);
+            $ausentismos                = $recarga->ausentismos()->where('grupo_id', $request->grupo)->input($input_query)->tipoAusentismo($request->tipo_ausentismo_id)->descuentoTurnoLibre($request->descuento_turno_libre)->descuento($request->descuento)->orderBy('id', 'asc')->paginate(50);
             $tipo_ausentismo_id_pluck   = $recarga->reglas()->where('grupo_id', $request->grupo)->pluck('tipo_ausentismo_id')->unique();
             $tipo_ausentismos           = TipoAusentismo::whereIn('id', $tipo_ausentismo_id_pluck)->get();
 

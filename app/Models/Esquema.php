@@ -358,6 +358,14 @@ class Esquema extends Model
             });
     }
 
+    public function scopeDescuentoTurnoLibre($query, $array)
+    {
+        if ($array)
+            return $query->whereHas('ausentismos', function ($q) use ($array) {
+                $q->whereIn('descuento_turno_libre', $array);
+            });
+    }
+
     public function scopeAjustesEnRecarga($query, $ajustes, $id_recarga)
     {
         if ($ajustes)

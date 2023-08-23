@@ -413,12 +413,16 @@ class ColumnasImportController extends Controller
             $tz         = 'America/Santiago';
             $inicio     = Carbon::createFromDate($recarga->anio_beneficio, $recarga->mes_beneficio, '01', $tz);
             $termino    = Carbon::createFromDate($recarga->anio_beneficio, $recarga->mes_beneficio, '01', $tz)->endOfMonth();
+            $feriados   = $recarga->feriados()->where('active', true)->pluck('fecha')->toArray();
 
             $inicio     = $inicio->format('Y-m-d');
             $termino    = $termino->format('Y-m-d');
             for ($i = $inicio; $i <= $termino; $i++) {
                 $i_format       = Carbon::parse($i)->format('d-m-Y');
+                $i_format_2     = Carbon::parse($i)->format('Y-m-d');
                 $format_excel   = $this->transformDateExcel($i_format);
+                $is_week_day    = Carbon::parse($i_format)->isWeekend();
+                $in_feriado     = in_array($i_format_2, $feriados);
                 $data =
                     [
                         'nombre_columna'        => Carbon::parse($i_format)->format('d'),
@@ -427,13 +431,20 @@ class ColumnasImportController extends Controller
                         'required'              => true,
                         'descripcion'           => "Corresponde a {$i_format}",
                         'disabled'              => true,
-                        'is_week_day'           => Carbon::parse($i_format)->isWeekend()
+                        'is_week_day'           => $is_week_day || $in_feriado ? true : false
                     ];
 
                 array_push($columnas, $data);
             }
         }
-        return $columnas;
+        return response()->json(
+            array(
+                'status'        => 'Success',
+                'title'         => null,
+                'message'       => null,
+                'columnas'      => $columnas
+            )
+        );
     }
 
     public function columnasImportViaticos()

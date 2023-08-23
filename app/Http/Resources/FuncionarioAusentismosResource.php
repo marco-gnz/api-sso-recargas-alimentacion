@@ -111,8 +111,10 @@ class FuncionarioAusentismosResource extends JsonResource
             'fecha_inicio_periodo'          => $this->fecha_inicio_periodo != null ? Carbon::parse($this->fecha_inicio_periodo)->format('d-m-Y') : null,
             'fecha_termino_periodo'         => $this->fecha_termino_periodo != null ? Carbon::parse($this->fecha_termino_periodo)->format('d-m-Y') : null,
             'total_dias_ausentismo'         => $this->total_dias_ausentismo,
-            'total_dias_ausentismo_periodo' => $this->total_dias_ausentismo_periodo,
-            'total_dias_habiles_periodo'    => $this->total_dias_habiles_ausentismo_periodo,
+            'total_dias_ausentismo_periodo' => (int)$this->total_dias_ausentismo_periodo,
+            'total_dias_habiles_periodo'    => (int)$this->total_dias_habiles_ausentismo_periodo,
+            'total_dias_ausentismo_periodo_turno'               => (int)$this->total_dias_ausentismo_periodo_turno,
+            'total_dias_habiles_ausentismo_periodo_turno'       => (int)$this->total_dias_habiles_ausentismo_periodo_turno,
             'nombre_grupo_ausentismo'       => $this->grupoAusentismo->nombre,
             'nombre_tipo_ausentismo'        => $this->tipoAusentismo->nombre,
             'nombre_meridiano'              => $this->meridiano != null ? $this->meridiano->nombre : null,
@@ -124,6 +126,7 @@ class FuncionarioAusentismosResource extends JsonResource
             'es_turnante'                   => $this->esquema ? Esquema::TURNANTE_NOM[$this->esquema->es_turnante] : null,
             'es_turnante_type'              => $this->esquema ? ($this->esquema->es_turnante === 1 ? 'warning' : ($this->esquema->es_turnante === 2 ? 'primary' : 'danger')) : null,
             'regla_tipo_dias'               => $this->regla ? ($this->regla->active_tipo_dias ? ($this->regla->tipo_dias ? 'Hábiles' : 'Naturales') : 'FuncionarioTurno') : 'FuncionarioTurno',
+            'descuento_turno_libre'         => $this->descuento_turno_libre ? true : false
         ];
     }
 }

@@ -30,6 +30,7 @@ class Recarga extends Model
         'mes_beneficio',
         'total_dias_mes_beneficio',
         'total_dias_laborales_beneficio',
+        'total_dias_habiles_beneficio',
         'total_dias_habiles',
         'anio_calculo',
         'mes_calculo',

@@ -14,6 +14,7 @@ use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithValidation;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use App\Http\Controllers\Admin\Esquema\EsquemaController;
+use App\Http\Controllers\Admin\Calculos\AnalisisRegistroController;
 use Illuminate\Support\Facades\Log;
 
 class GrupoDosImportStore implements ToModel, WithHeadingRow, WithValidation
@@ -71,8 +72,8 @@ class GrupoDosImportStore implements ToModel, WithHeadingRow, WithValidation
             if ($funcionario && $tipo_ausentismo && $meridiano) {
                 $esquema_controller     = new EsquemaController;
                 $esquema                = $esquema_controller->returnEsquema($funcionario->id, $this->recarga->id);
-                $turnante               = $this->esTurnante($funcionario);
-                $regla                  = $this->recarga->reglas()
+                $turnante               = $esquema ? ($esquema->es_turnante != 2 ? true : false) : false;
+                /* $regla                  = $this->recarga->reglas()
                     ->where('turno_funcionario', $turnante)
                     ->where('grupo_id', 2)
                     ->where('tipo_ausentismo_id', $tipo_ausentismo->id)
@@ -80,10 +81,10 @@ class GrupoDosImportStore implements ToModel, WithHeadingRow, WithValidation
                         $query->where('meridiano_regla.meridiano_id', $meridiano->id)
                             ->where('meridiano_regla.active', true);
                     })
-                    ->first();
+                    ->first(); */
                 $fecha_inicio           = Carbon::parse($this->transformDate($row[strtolower($this->fecha_inicio)]));
                 $fecha_termino          = Carbon::parse($this->transformDate($row[strtolower($this->fecha_termino)]));
-                $calculo                = $this->totalDiasEnPeriodo($fecha_inicio->format('d-m-Y'), $fecha_termino->format('d-m-Y'));
+                /* $calculo                = $this->totalDiasEnPeriodo($fecha_inicio->format('d-m-Y'), $fecha_termino->format('d-m-Y'));
                 $total_dias_ausentismo  = $row[$this->total_ausentismo];
 
                 if ($total_dias_ausentismo) {
@@ -91,9 +92,12 @@ class GrupoDosImportStore implements ToModel, WithHeadingRow, WithValidation
                     if ($is_decimal) {
                         $total_dias_ausentismo = number_format($total_dias_ausentismo, 2, '.', '');
                     }
-                }
+                } */
 
-                $data = [
+                $analisis_registro_controller       = new AnalisisRegistroController;
+                $analisis_ausentismo_grupo_dos      = $analisis_registro_controller->analisisAusentismoGrupoDos($turnante, $this->recarga, $funcionario, $fecha_inicio, $fecha_termino, $meridiano, $tipo_ausentismo);
+
+                /* $data = [
                     'fecha_inicio'                                      => $calculo[1] != null ? Carbon::parse($calculo[1])->format('Y-m-d') : NULL,
                     'fecha_termino'                                     => $calculo[2] != null ? Carbon::parse($calculo[2])->format('Y-m-d') : NULL,
                     'fecha_inicio_periodo'                              => $calculo[4] != null ? Carbon::parse($calculo[4])->format('Y-m-d') : NULL,
@@ -109,12 +113,35 @@ class GrupoDosImportStore implements ToModel, WithHeadingRow, WithValidation
                     'meridiano_id'                                      => $meridiano->id,
                     'esquema_id'                                        => $esquema ? $esquema->id : NULL,
                     'tiene_descuento'                                   => $regla ? true : false
+                ]; */
+
+                $data = [
+                    'fecha_inicio'                          => $analisis_ausentismo_grupo_dos->fecha_inicio->format('Y-m-d'),
+                    'fecha_termino'                         => $analisis_ausentismo_grupo_dos->fecha_termino->format('Y-m-d'),
+                    'fecha_inicio_periodo'                  => $analisis_ausentismo_grupo_dos->fecha_inicio_periodo->format('Y-m-d'),
+                    'fecha_termino_periodo'                 => $analisis_ausentismo_grupo_dos->fecha_termino_periodo->format('Y-m-d'),
+                    'total_dias_ausentismo'                 => $analisis_ausentismo_grupo_dos->total_dias_ausentismo,
+
+                    'total_dias_ausentismo_periodo'                 => $analisis_ausentismo_grupo_dos->total_dias_ausentismo_periodo,
+                    'total_dias_habiles_ausentismo_periodo'         => $analisis_ausentismo_grupo_dos->total_dias_habiles_ausentismo_periodo,
+                    'total_dias_ausentismo_periodo_turno'           => $analisis_ausentismo_grupo_dos->total_dias_ausentismo_periodo_turno,
+                    'total_dias_habiles_ausentismo_periodo_turno'   => $analisis_ausentismo_grupo_dos->total_dias_habiles_ausentismo_periodo_turno,
+
+                    'user_id'                               => $funcionario->id,
+                    'tipo_ausentismo_id'                    => $tipo_ausentismo->id,
+                    'regla_id'                              => $analisis_ausentismo_grupo_dos->regla ? $analisis_ausentismo_grupo_dos->regla->id : NULL,
+                    'grupo_id'                              => 2,
+                    'recarga_id'                            => $this->recarga->id,
+                    'esquema_id'                            => $esquema ? $esquema->id : NULL,
+                    'meridiano_id'                          => $meridiano->id,
+                    'descuento_turno_libre'                 => $analisis_ausentismo_grupo_dos->descuento_en_turnos,
+                    'tiene_descuento'                       => $analisis_ausentismo_grupo_dos->descuento_value
                 ];
 
                 $ausentismo = Ausentismo::create($data);
                 if ($ausentismo) {
                     $cartola_controller = new ActualizarEsquemaController;
-                            $cartola_controller->updateAusentismosGrupoDos($funcionario, $this->recarga, 2);
+                    $cartola_controller->updateAusentismosGrupoDos($funcionario, $this->recarga, 2);
                     $this->importados++;
                     return $ausentismo;
                 }

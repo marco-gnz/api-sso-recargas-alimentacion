@@ -14,6 +14,7 @@ use Maatwebsite\Excel\Concerns\WithValidation;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use App\Http\Controllers\Admin\Calculos\ActualizarEsquemaController;
 use App\Http\Controllers\Admin\Esquema\EsquemaController;
+use App\Http\Controllers\Admin\Calculos\AnalisisRegistroController;
 use Illuminate\Support\Facades\Log;
 
 class GrupoUnoImportStore implements ToModel, WithHeadingRow, WithValidation
@@ -129,6 +130,8 @@ class GrupoUnoImportStore implements ToModel, WithHeadingRow, WithValidation
             $esquema_controller     = new EsquemaController;
             $esquema                = $esquema_controller->returnEsquema($funcionario->id, $this->recarga->id);
             $exist_tipo_ausentismo  = $this->existTipoAusentismoInGrupo($tipo_ausentismo);
+            $turnante               = $esquema ? ($esquema->es_turnante != 2 ? true : false) : false;
+
             $regla                  = $this->recarga->reglas()
                 ->where('grupo_id', 1)
                 ->where('tipo_ausentismo_id', $tipo_ausentismo->id)
@@ -137,31 +140,38 @@ class GrupoUnoImportStore implements ToModel, WithHeadingRow, WithValidation
             $fecha_inicio           = Carbon::parse($this->transformDate($row[strtolower($this->fecha_inicio)]));
             $fecha_termino          = Carbon::parse($this->transformDate($row[strtolower($this->fecha_termino)]));
 
-            $calculo                = $this->totalDiasEnPeriodo($fecha_inicio->format('d-m-Y'), $fecha_termino->format('d-m-Y'));
+            $analisis_registro_controller       = new AnalisisRegistroController;
+            $analisis_ausentismo_grupo_uno      = $analisis_registro_controller->analisisAusentismoGrupoUno($turnante, $this->recarga, $funcionario, $fecha_inicio, $fecha_termino);
 
             if ($exist_tipo_ausentismo) {
-                $fecha_inicio_real      = $calculo[4] ? Carbon::parse($calculo[4])->format('Y-m-d') : null;
-                $fecha_termino_real     = $calculo[5] ? Carbon::parse($calculo[5])->format('Y-m-d') : null;
+                $fecha_inicio_real      = Carbon::parse($analisis_ausentismo_grupo_uno->fecha_inicio)->format('Y-m-d');
+                $fecha_termino_real     = Carbon::parse($analisis_ausentismo_grupo_uno->fecha_termino)->format('Y-m-d');
 
                 $compensatorio_dias  = $this->validateFechaDiasCompensatoriosAndCompensacionTiempoLibre($rut, $tipo_ausentismo->nombre, $fecha_inicio, $fecha_termino);
-                $fechas                 = $this->validateFechasAusentismos($rut, $tipo_ausentismo->nombre, $fecha_inicio_real, $fecha_termino_real);
+                $fechas              = $this->validateFechasAusentismos($rut, $tipo_ausentismo->nombre, $fecha_inicio_real, $fecha_termino_real);
 
 
                 if (!$compensatorio_dias && $regla && !$fechas->value) {
                     $data = [
-                        'fecha_inicio'                  => $calculo[1] != null ? Carbon::parse($calculo[1])->format('Y-m-d') : NULL,
-                        'fecha_termino'                 => $calculo[2] != null ? Carbon::parse($calculo[2])->format('Y-m-d') : NULL,
-                        'fecha_inicio_periodo'          => $calculo[4] != null ? Carbon::parse($calculo[4])->format('Y-m-d') : NULL,
-                        'fecha_termino_periodo'         => $calculo[5] != null ? Carbon::parse($calculo[5])->format('Y-m-d') : NULL,
-                        'total_dias_ausentismo'         => $calculo[0],
-                        'total_dias_ausentismo_periodo' => $calculo[3],
-                        'user_id'                       => $funcionario->id,
-                        'tipo_ausentismo_id'            => $tipo_ausentismo->id,
-                        'regla_id'                      => $regla->id,
-                        'grupo_id'                      => $regla->grupoAusentismo->id,
-                        'recarga_id'                    => $this->recarga->id,
-                        'esquema_id'                    => $esquema ? $esquema->id : NULL,
-                        'tiene_descuento'               => true
+                        'fecha_inicio'                          => $analisis_ausentismo_grupo_uno->fecha_inicio->format('Y-m-d'),
+                        'fecha_termino'                         => $analisis_ausentismo_grupo_uno->fecha_termino->format('Y-m-d'),
+                        'fecha_inicio_periodo'                  => $analisis_ausentismo_grupo_uno->fecha_inicio_periodo->format('Y-m-d'),
+                        'fecha_termino_periodo'                 => $analisis_ausentismo_grupo_uno->fecha_termino_periodo->format('Y-m-d'),
+                        'total_dias_ausentismo'                 => $analisis_ausentismo_grupo_uno->total_dias_ausentismo,
+
+                        'total_dias_ausentismo_periodo'                 => $analisis_ausentismo_grupo_uno->total_dias_ausentismo_periodo,
+                        'total_dias_habiles_ausentismo_periodo'         => $analisis_ausentismo_grupo_uno->total_dias_habiles_ausentismo_periodo,
+                        'total_dias_ausentismo_periodo_turno'           => $analisis_ausentismo_grupo_uno->total_dias_ausentismo_periodo_turno,
+                        'total_dias_habiles_ausentismo_periodo_turno'   => $analisis_ausentismo_grupo_uno->total_dias_habiles_ausentismo_periodo_turno,
+
+                        'user_id'                               => $funcionario->id,
+                        'tipo_ausentismo_id'                    => $tipo_ausentismo->id,
+                        'regla_id'                              => $regla->id,
+                        'grupo_id'                              => 1,
+                        'recarga_id'                            => $this->recarga->id,
+                        'esquema_id'                            => $esquema ? $esquema->id : NULL,
+                        'tiene_descuento'                       => true,
+                        'descuento_turno_libre'                 => $analisis_ausentismo_grupo_uno->descuento_en_turnos
                     ];
 
                     $ausentismo = Ausentismo::create($data);

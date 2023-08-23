@@ -22,6 +22,9 @@ class Viatico extends Model
         'fecha_termino_periodo',
         'total_dias_periodo',
         'total_dias_habiles_periodo',
+        'total_dias_periodo_turno',
+        'total_dias_habiles_periodo_turno',
+        'descuento_turno_libre',
         'jornada',
         'tipo_resolucion',
         'n_resolucion',
@@ -61,41 +64,9 @@ class Viatico extends Model
     protected static function booted()
     {
         static::creating(function ($viatico) {
-            $days = 0;
-            $fecha_inicio   = Carbon::parse($viatico->fecha_inicio);
-            $fecha_termino  = Carbon::parse($viatico->fecha_termino);
-            $days_diff      = $fecha_inicio->diffInDays($fecha_termino) + 1;
-
-            $fecha_inicio_periodo   = Carbon::parse($viatico->fecha_inicio_periodo);
-            $fecha_termino_periodo  = Carbon::parse($viatico->fecha_termino_periodo);
-            $days_diff_periodo      = $fecha_inicio_periodo->diffInDays($fecha_termino_periodo) + 1;
-
-            $fecha_inicio   = $fecha_inicio->format('Y-m-d');
-            $fecha_termino  = $fecha_termino->format('Y-m-d');
-
-            $fecha_inicio_periodo   = $fecha_inicio_periodo->format('Y-m-d');
-            $fecha_termino_periodo  = $fecha_termino_periodo->format('Y-m-d');
-
-            for ($i = $fecha_inicio_periodo; $i <= $fecha_termino_periodo; $i++) {
-                $i_format       = Carbon::parse($i)->isWeekend();
-                if($i_format){
-                    $days++;
-                }
-            }
-
             $viatico->uuid                  = Str::uuid();
-            $viatico->total_dias            = $days_diff;
-            $viatico->total_dias_periodo    = $days_diff_periodo;
-            $viatico->total_dias_habiles_periodo    = ($days_diff_periodo - $days);
             $viatico->user_created_by       = Auth::user()->id;
             $viatico->date_created_user     = Carbon::now()->toDateTimeString();
-        });
-
-        static::created(function ($viatico) {
-            $feriados_count                                     = $viatico->recarga->feriados()->where('active', true)->whereBetween('fecha', [$viatico->fecha_inicio_periodo, $viatico->fecha_termino_periodo])->count();
-            $total                                              = $viatico->total_dias_habiles_periodo - $feriados_count;
-            $viatico->total_dias_habiles_periodo                = $total;
-            $viatico->save();
         });
 
         static::deleted(function ($viatico) {
@@ -122,5 +93,25 @@ class Viatico extends Model
                         ->orWhere('nombre_completo', 'like', '%' . $input . '%');
                 });
             });
+    }
+
+    public function scopeDescuento($query, $descuento)
+    {
+        if ($descuento) {
+            if (in_array(1, $descuento) && in_array(0, $descuento)) {
+                return $query;
+            } elseif (in_array(1, $descuento)) {
+                return $query->where('valor_viatico', '>', 0);
+            } elseif (in_array(0, $descuento)) {
+                return $query->where('valor_viatico', '<=', 0);
+            }
+        }
+    }
+
+    public function scopeDescuentoTurnoLibre($query, $array)
+    {
+        if ($array) {
+            return $query->where('descuento_turno_libre', $array);
+        }
     }
 }
