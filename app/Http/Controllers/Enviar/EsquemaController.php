@@ -65,6 +65,7 @@ class EsquemaController extends Controller
                         'title'         => null,
                         'message'       => null,
                         'esquemas'      => EsquemasResource::collection($esquemas),
+                        'email'         => $funcionario->email ? $funcionario->email : null
                     )
                 );
             }
