@@ -136,7 +136,6 @@ class RecargaContrato extends Model
             $feriados_count     = $this->contarFeriadosEnContrato($this->recarga, $this);
             $calculo_contrato   = $this->total_dias_habiles_contrato_periodo - $feriados_count;
             $esquema = $this->esquema()->create([
-                'total_dias_feriados_contrato'  => $feriados_count,
                 'calculo_contrato'              => $calculo_contrato,
                 'fecha_alejamiento'             => $this->alejamiento ? true : false,
                 'total_dias_contrato'           => $this->total_dias_contrato_periodo,

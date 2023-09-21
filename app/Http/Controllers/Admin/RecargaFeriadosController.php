@@ -79,6 +79,9 @@ class RecargaFeriadosController extends Controller
                         }
                     }
                 }
+                $recarga->update([
+                    'date_updated_user'   => Carbon::now()->toDateTimeString()
+                ]);
 
                 if ($asociados > 0) {
                     return response()->json(
@@ -112,6 +115,9 @@ class RecargaFeriadosController extends Controller
             $delete = $recarga->feriados()->detach($feriado->id);
 
             if ($delete) {
+                $recarga->update([
+                    'date_updated_user'   => Carbon::now()->toDateTimeString()
+                ]);
                 $message = 'Feriado eliminado de recarga con éxito';
                 return $this->successResponse(null, $message);
             }
