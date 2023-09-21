@@ -20,7 +20,7 @@ class RecargaFeriadosResource extends JsonResource
         return [
             'id'                        => $this->id,
             'fecha_corta'               => $this->fecha ? Carbon::parse($this->fecha)->format('d-m-Y') : null,
-            'fecha_larga'               => $this->fecha_larga ? Carbon::parse($this->fecha_larga)->locale('es')->dayName : null,
+            'fecha_larga'               => $this->fecha ? Carbon::parse($this->fecha)->locale('es')->dayName : null,
             'nombre'                    => $this->nombre ? $this->nombre : null,
             'irrenunciable'             => $this->irrenunciable ? 'Si' : 'No',
         ];
