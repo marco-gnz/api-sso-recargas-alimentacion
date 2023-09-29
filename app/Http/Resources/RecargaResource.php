@@ -20,7 +20,7 @@ class RecargaResource extends JsonResource
         Carbon::setLocale('es');
         $tz                                 = 'America/Santiago';
         $monto_dia                          = $this->monto_dia != null ? number_format($this->monto_dia, 0, ",", ".") : null;
-        $total_pagado_query                 = $this->esquemas()->where('active', true)->sum('monto_total_cancelar');
+        $total_pagado_query                 = $this->esquemas()->where('active', true)->where('monto_total_cancelar', '>', 0)->sum('monto_total_cancelar');
         $total_pagado_not_query             = $this->esquemas()->where('active', false)->sum('monto_total_cancelar');
         $total_pagado                       = "$".number_format($total_pagado_query, 0, ",", ".");
         $total_not_pagado                   = "$".number_format($total_pagado_not_query, 0, ",", ".");

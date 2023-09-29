@@ -61,7 +61,7 @@ class RecargaResumenResource extends JsonResource
         $monto_dia                          = $this->monto_dia != null ? number_format($this->monto_dia, 0, ",", ".") : null;
         $monto_estimado                     = $total_dias_habiles_beneficio * $this->monto_dia;
 
-        $total_pagado_query                 = $this->esquemas()->where('active', true)->sum('monto_total_cancelar');
+        $total_pagado_query                 = $this->esquemas()->where('active', true)->where('monto_total_cancelar', '>', 0)->sum('monto_total_cancelar');
         $total_calculo_contrato_query       = $this->esquemas()->where('active', true)->sum('calculo_contrato');
         $total_calculo_turno_query          = $this->esquemas()->where('active', true)->sum('calculo_turno');
         $total_calculo_grupo_uno_query      = $this->esquemas()->where('active', true)->sum('calculo_grupo_uno');
