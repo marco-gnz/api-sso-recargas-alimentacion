@@ -14,4 +14,11 @@ class ProcesoTurno extends Model
         'cod_sirh',
         'nombre'
     ];
+
+    public function scopeInput($query, $input)
+    {
+        if ($input)
+            return $query->where('cod_sirh', 'like', '%' . $input . '%')
+                ->orWhere('nombre', 'like', '%' . $input . '%');
+    }
 }

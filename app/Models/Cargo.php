@@ -7,5 +7,18 @@ use Illuminate\Database\Eloquent\Model;
 
 class Cargo extends Model
 {
-    use HasFactory;
+    protected $table = "cargos";
+    protected $primaryKey = 'id';
+
+    protected $fillable = [
+        'cod_sirh',
+        'nombre'
+    ];
+
+    public function scopeInput($query, $input)
+    {
+        if ($input)
+            return $query->where('cod_sirh', 'like', '%' . $input . '%')
+                ->orWhere('nombre', 'like', '%' . $input . '%');
+    }
 }

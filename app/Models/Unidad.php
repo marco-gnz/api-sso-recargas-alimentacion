@@ -19,4 +19,11 @@ class Unidad extends Model
     {
         return $this->hasMany(RecargaContrato::class);
     }
+
+    public function scopeInput($query, $input)
+    {
+        if ($input)
+            return $query->where('cod_sirh', 'like', '%' . $input . '%')
+                ->orWhere('nombre', 'like', '%' . $input . '%');
+    }
 }

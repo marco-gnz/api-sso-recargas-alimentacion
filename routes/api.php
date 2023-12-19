@@ -63,6 +63,16 @@ Route::group(
         Route::get('/admin/modulos/roles/response', [App\Http\Controllers\Admin\Modulos\ModulosResponseController::class, 'getRoles']);
         Route::get('/admin/modulos/horas/response', [App\Http\Controllers\Admin\Modulos\ModulosResponseController::class, 'getHoras']);
 
+        //mantenedores
+        Route::get('/admin/mantenedores/contractual', [App\Http\Controllers\Admin\Mantenedores\ContractualesController::class, 'getDatoContractual']);
+        Route::get('/admin/mantenedores/contractuales', [App\Http\Controllers\Admin\Mantenedores\ContractualesController::class, 'getDatosContractuales']);
+        Route::post('/admin/mantenedores/contractuales/cargo', [App\Http\Controllers\Admin\Mantenedores\ContractualesController::class, 'storeCargo']);
+        Route::post('/admin/mantenedores/contractuales/unidad', [App\Http\Controllers\Admin\Mantenedores\ContractualesController::class, 'storeUnidad']);
+        Route::post('/admin/mantenedores/contractuales/asignacion', [App\Http\Controllers\Admin\Mantenedores\ContractualesController::class, 'storeAsignacion']);
+        Route::put('/admin/mantenedores/contractuales/{id}/cargo', [App\Http\Controllers\Admin\Mantenedores\ContractualesController::class, 'updateCargo']);
+        Route::put('/admin/mantenedores/contractuales/{id}/unidad', [App\Http\Controllers\Admin\Mantenedores\ContractualesController::class, 'updateUnidad']);
+        Route::put('/admin/mantenedores/contractuales/{id}/asignacion', [App\Http\Controllers\Admin\Mantenedores\ContractualesController::class, 'updateAsignacion']);
+
         Route::get('/admin/recargas/response', [App\Http\Controllers\Admin\RecargasController::class, 'returnRecargas']);
         Route::post('/admin/recargas/add', [App\Http\Controllers\Admin\RecargasController::class, 'storeRecarga']);
         Route::put('/admin/recargas/recarga/status/{id}', [App\Http\Controllers\Admin\RecargasController::class, 'changeStatus']);
