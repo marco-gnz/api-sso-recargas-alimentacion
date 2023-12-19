@@ -21,8 +21,14 @@ class LoginController extends Controller
 
             $user = User::where('email', $request->email)->first();
 
+            $count_roles = $user->roles()->count();
+
             if ($user && !$user->estado) {
                 return response('inhabilitado', 503);
+            }
+
+            if ($count_roles <= 0) {
+                return response('not_roles', 403);
             }
 
             if (!$user || !auth()->guard()->attempt($request->only('email', 'password'))) {
