@@ -134,7 +134,7 @@ class Reajuste extends Model
             $reajuste->dias_periodo_habiles = $dias_periodo_habiles;
             $reajuste->total_dias           = $total_dias;
             $reajuste->monto_ajuste         = $monto_ajuste;
-            $reajuste->user_created_by      = Auth::user()->id;
+            $reajuste->user_created_by      = $reajuste->user_created_by === null ? (Auth::user() ? Auth::user()->id : null) : $reajuste->user_created_by;
             $reajuste->date_created_user    = Carbon::now()->toDateTimeString();
             $reajuste->last_status          = ReajusteEstado::STATUS_PENDIENTE;
         });
@@ -143,12 +143,13 @@ class Reajuste extends Model
     public function scopeInput($query, $input)
     {
         if ($input)
-            return $query->where(function ($query) use ($input) {
-                $query->whereHas('funcionario', function ($query) use ($input) {
-                    $query->where('rut_completo', 'like', '%' . $input . '%')
-                        ->orWhere('nombre_completo', 'like', '%' . $input . '%');
+            return $query->where('observacion', 'like', '%' . $input . '%')
+                ->orWhere(function ($query) use ($input) {
+                    $query->whereHas('funcionario', function ($query) use ($input) {
+                        $query->where('rut_completo', 'like', '%' . $input . '%')
+                            ->orWhere('nombre_completo', 'like', '%' . $input . '%');
+                    });
                 });
-            });
     }
 
     public function scopeTipos($query, $tipos)

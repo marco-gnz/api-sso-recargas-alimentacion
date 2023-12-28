@@ -54,7 +54,7 @@ class ReajusteEstado extends Model
     protected static function booted()
     {
         static::creating(function ($reajuste_estado) {
-            $reajuste_estado->user_id      = Auth::user()->id;
+            $reajuste_estado->user_id      = $reajuste_estado->user_id === null ? (Auth::user() ? Auth::user()->id : null) : $reajuste_estado->user_id;
             if($reajuste_estado->reajuste){
                 $reajuste_estado->reajuste->update([
                     'last_status'  => $reajuste_estado->status
