@@ -213,10 +213,9 @@ class AnalisisRegistroController extends Controller
     private function calculoGrupoTres($analisis_periodo_recarga, $hora_inicio, $hora_termino, $recarga, $es_turnante, $funcionario)
     {
         $tz                         = 'America/Santiago';
-        $date_recarga               = Carbon::createFromDate($recarga->anio_beneficio, $recarga->mes_beneficio, '01', $tz);
-        $primer_dia_mes_anterior    = $date_recarga->subMonth()->startOfMonth();
-        $mont_last                  = $primer_dia_mes_anterior->format('m');
-        $year_last                  = $primer_dia_mes_anterior->format('Y');
+        $date_recarga               = Carbon::createFromDate($recarga->anio_calculo, $recarga->mes_calculo, '01', $tz);
+        $mont_last                  = $date_recarga->format('m');
+        $year_last                  = $date_recarga->format('Y');
         $descuento                  = false;
 
         $diff_dias_periodo          = $analisis_periodo_recarga->total_dias_periodo;
@@ -547,10 +546,9 @@ class AnalisisRegistroController extends Controller
 
             $descuento_en_turnos        = false;
             $tz                         = 'America/Santiago';
-            $date_recarga               = Carbon::createFromDate($recarga->anio_beneficio, $recarga->mes_beneficio, '01', $tz);
-            $primer_dia_mes_anterior    = $date_recarga->subMonth()->startOfMonth();
-            $mont_last                  = $primer_dia_mes_anterior->format('m');
-            $year_last                  = $primer_dia_mes_anterior->format('Y');
+            $date_recarga               = Carbon::createFromDate($recarga->anio_calculo, $recarga->mes_calculo, '01', $tz);
+            $mont_last                  = $date_recarga->format('m');
+            $year_last                  = $date_recarga->format('Y');
             $total_dias_periodo         = 0;
             $total_dias_periodo_habiles  = 0;
 

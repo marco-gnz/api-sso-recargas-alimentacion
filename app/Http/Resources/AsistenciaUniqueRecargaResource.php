@@ -13,10 +13,9 @@ class AsistenciaUniqueRecargaResource extends JsonResource
     {
         $exist                      = false;
         $tz                         = 'America/Santiago';
-        $date_recarga               = Carbon::createFromDate($asistencia->recarga->anio_beneficio, $asistencia->recarga->mes_beneficio, '01', $tz);
-        $primer_dia_mes_anterior    = $date_recarga->addMonth()->startOfMonth();
-        $mont_last                  = $primer_dia_mes_anterior->format('m');
-        $year_last                  = $primer_dia_mes_anterior->format('Y');
+        $date_recarga               = Carbon::createFromDate($asistencia->recarga->anio_calculo, $asistencia->recarga->mes_calculo, '01', $tz);
+        $mont_last                  = $date_recarga->format('m');
+        $year_last                  = $date_recarga->format('Y');
 
         $fecha                      = $asistencia->fecha;
 
