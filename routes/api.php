@@ -74,6 +74,13 @@ Route::group(
         Route::put('/admin/mantenedores/contractuales/{id}/unidad', [App\Http\Controllers\Admin\Mantenedores\ContractualesController::class, 'updateUnidad']);
         Route::put('/admin/mantenedores/contractuales/{id}/asignacion', [App\Http\Controllers\Admin\Mantenedores\ContractualesController::class, 'updateAsignacion']);
 
+        Route::get('/admin/mantenedores/variacion', [App\Http\Controllers\Admin\Mantenedores\VariacionesController::class, 'getVariacion']);
+        Route::get('/admin/mantenedores/variaciones', [App\Http\Controllers\Admin\Mantenedores\VariacionesController::class, 'getVariaciones']);
+        Route::post('/admin/mantenedores/variaciones/ausentismo', [App\Http\Controllers\Admin\Mantenedores\VariacionesController::class, 'storeAusentismo']);
+        Route::post('/admin/mantenedores/variaciones/incremento', [App\Http\Controllers\Admin\Mantenedores\VariacionesController::class, 'storeIncremento']);
+        Route::put('/admin/mantenedores/variaciones/{id}/ausentismo', [App\Http\Controllers\Admin\Mantenedores\VariacionesController::class, 'updateAusentismo']);
+        Route::put('/admin/mantenedores/variaciones/{id}/incremento', [App\Http\Controllers\Admin\Mantenedores\VariacionesController::class, 'updateIncremento']);
+
         Route::get('/admin/recargas/response', [App\Http\Controllers\Admin\RecargasController::class, 'returnRecargas']);
         Route::post('/admin/recargas/add', [App\Http\Controllers\Admin\RecargasController::class, 'storeRecarga']);
         Route::put('/admin/recargas/recarga/status/{id}', [App\Http\Controllers\Admin\RecargasController::class, 'changeStatus']);

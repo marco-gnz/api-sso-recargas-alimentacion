@@ -16,4 +16,14 @@ class TipoAusentismo extends Model
         'sigla',
         'estado'
     ];
+
+    public $timestamps = false;
+
+    public function scopeInput($query, $input)
+    {
+        if ($input)
+            return $query->where('codigo_sirh', 'like', '%' . $input . '%')
+                ->orWhere('nombre', 'like', '%' . $input . '%')
+                ->orWhere('sigla', 'like', '%' . $input . '%');
+    }
 }
