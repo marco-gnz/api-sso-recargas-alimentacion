@@ -81,6 +81,9 @@ class RecargasController extends Controller
     public function returnRecargas()
     {
         try {
+            $user_auth          = Auth::user();
+            $establecimientos   = $user_auth->establecimientos;
+
             $recargas = Recarga::withCount('users')
                 ->withCount('ausentismos')
                 ->withCount('asignaciones')
@@ -88,6 +91,7 @@ class RecargasController extends Controller
                 ->withCount('contratos')
                 ->withCount('viaticos')
                 ->withCount('esquemas')
+                ->whereIn('establecimiento_id', $establecimientos->pluck('id'))
                 ->orderBy('anio_beneficio', 'DESC')
                 ->orderBy('mes_beneficio', 'DESC')
                 ->get();
