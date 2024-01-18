@@ -32,7 +32,8 @@ class UpdateAdministradorRequest extends FormRequest
             'nombres'               => ['required'],
             'apellidos'             => ['required'],
             'email'                 => ['required', 'email', Rule::unique('users', 'rut')->ignore($this->id)],
-            'roles_id'              => ['required'],
+            'roles_id'              => ['required', 'array'],
+            'permisos_id'           => ['nullable', 'array'],
             'establecimientos_id'   => ['required'],
             'permisos'              => ['nullable']
         ];
@@ -72,6 +73,7 @@ class UpdateAdministradorRequest extends FormRequest
             'apellidos'             => 'apellido',
             'email'                 => 'email',
             'roles_id'              => 'perfil',
+            'permisos_id'           => 'permisos',
             'establecimientos_id'   => 'establecimiento'
         ];
     }

@@ -9,8 +9,10 @@ use App\Http\Requests\Auth\UpdatePasswordUserRequest;
 use App\Http\Resources\Usuarios\AdministradoresResource;
 use App\Models\User;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\Models\Permission;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 
 class AdministradoresController extends Controller
 {
@@ -141,6 +143,8 @@ class AdministradoresController extends Controller
                     $usuario->establecimientos()->sync($request->establecimientos_id);
                 }
 
+                $usuario->syncPermissions($request->permisos_id);
+
                 return response()->json(
                     array(
                         'status'        => 'Success',
@@ -213,7 +217,7 @@ class AdministradoresController extends Controller
 
                 $update = $usuario->save();
 
-                if($update){
+                if ($update) {
                     return response()->json(
                         array(
                             'status'        => 'Success',
@@ -225,6 +229,34 @@ class AdministradoresController extends Controller
             } else {
                 return response(["errors" => ["password" => ["La contraseña actual es inconrrecta"]]], 422);
             }
+        } catch (\Exception $error) {
+            return response()->json($error->getMessage());
+        }
+    }
+
+    public function getPermissionsAditional($uuid, Request $request)
+    {
+        try {
+            $permissions    = [];
+            $roles          = Role::whereIn('id', $request->roles_id)->get();
+
+            foreach ($roles as $role) {
+                foreach ($role->permissions as $permission) {
+                    if (!in_array($permission->id, $permissions)) {
+                        array_push($permissions, $permission->id);
+                    }
+                }
+            }
+            $permissions_aditional = Permission::whereNotIn('id', $permissions)->get();
+
+            return response()->json(
+                array(
+                    'status'                => 'Success',
+                    'title'                 => null,
+                    'message'               => null,
+                    'permissions_aditional' => $permissions_aditional,
+                )
+            );
         } catch (\Exception $error) {
             return response()->json($error->getMessage());
         }
