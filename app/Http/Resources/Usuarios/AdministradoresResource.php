@@ -26,6 +26,7 @@ class AdministradoresResource extends JsonResource
             'email'                 => $this->email,
             'roles'                 => $this->getRoleNames()->implode(', '),
             'roles_id'              => $this->roles ? $this->roles->pluck('id') : [],
+            'permisos_id'           => $this->permissions ? $this->permissions->pluck('id') : [],
             'establecimientos_id'   => $this->establecimientos ? $this->establecimientos->pluck('id') : [],
             'establecimientos_nom'  => $this->establecimientos ? $this->establecimientos->pluck('sigla')->implode(' - ') : null
         ];

@@ -60,6 +60,7 @@ Route::group(
         Route::get('/admin/modulos/columnas/asistencia/{codigo}/resumen', [App\Http\Controllers\Admin\Modulos\ColumnasImportController::class, 'columnasResumenAsistencia']);
         Route::get('/admin/modulos/tipos-asistencia-turnos/response', [App\Http\Controllers\Admin\Modulos\ModulosResponseController::class, 'returnTipoAsistenciaTurno']);
         Route::get('/admin/modulos/columnas/viaticos', [App\Http\Controllers\Admin\Modulos\ColumnasImportController::class, 'columnasImportViaticos']);
+        Route::get('/admin/modulos/columnas/ajustes', [App\Http\Controllers\Admin\Modulos\ColumnasImportController::class, 'columnasImportAjustes']);
         Route::get('/admin/modulos/roles/response', [App\Http\Controllers\Admin\Modulos\ModulosResponseController::class, 'getRoles']);
         Route::get('/admin/modulos/horas/response', [App\Http\Controllers\Admin\Modulos\ModulosResponseController::class, 'getHoras']);
 
@@ -98,6 +99,10 @@ Route::group(
         //recarga-viaticos
         Route::post('/admin/recargas/recarga/masivo/viaticos', [App\Http\Controllers\Admin\RecargasFilesController::class, 'loadData']);
         Route::post('/admin/recargas/recarga/masivo/viaticos/import', [App\Http\Controllers\Admin\RecargasFilesController::class, 'storeData']);
+
+        //recarga-ajustes
+        Route::post('/admin/recargas/recarga/masivo/ajustes', [App\Http\Controllers\Admin\RecargasFilesController::class, 'loadData']);
+        Route::post('/admin/recargas/recarga/masivo/ajustes/import', [App\Http\Controllers\Admin\RecargasFilesController::class, 'storeData']);
 
         //recarga-feriados
         Route::post('/admin/recargas/feriados', [App\Http\Controllers\Admin\RecargaFeriadosController::class, 'storeFeriados']);
@@ -180,6 +185,7 @@ Route::group(
         Route::put('/admin/usuarios/administrador/{uuid}/status', [App\Http\Controllers\Admin\Usuarios\AdministradoresController::class, 'editAdministradorStatus']);
         Route::put('/admin/usuarios/administrador/{uuid}/refresh-password', [App\Http\Controllers\Admin\Usuarios\AdministradoresController::class, 'refreshPasswordAdministrador']);
         Route::put('/admin/usuarios/administrador/{uuid}/change-password', [App\Http\Controllers\Admin\Usuarios\AdministradoresController::class, 'changePasswordAdministrador']);
+        Route::get('/admin/usuarios/administradores/permissions/{uuid}', [App\Http\Controllers\Admin\Usuarios\AdministradoresController::class, 'getPermissionsAditional']);
 
         Route::get('/public/funcionarios', [App\Http\Controllers\Enviar\EsquemaController::class, 'getFuncionarios']);
         Route::get('/public/funcionario/{uuid}/esquemas', [App\Http\Controllers\Enviar\EsquemaController::class, 'getEsquemasFuncionario']);

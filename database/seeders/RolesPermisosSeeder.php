@@ -104,11 +104,13 @@ class RolesPermisosSeeder extends Seeder
         $statusRegla        = Permission::create(['name' => "{$nom_permiso}.status"]);
 
         $nom_permiso        = 'ajuste';
+        $masivo             = 'masivo';
         $readAjuste         = Permission::create(['name' => "{$nom_permiso}.read"]);
         $createAjuste       = Permission::create(['name' => "{$nom_permiso}.create"]);
         $updateAjuste       = Permission::create(['name' => "{$nom_permiso}.update"]);
         $deleteAjuste       = Permission::create(['name' => "{$nom_permiso}.delete"]);
         $statusAjuste       = Permission::create(['name' => "{$nom_permiso}.status"]);
+        $createAjuste       = Permission::create(['name' => "{$nom_permiso}.create.{$masivo}"]);
 
         $nom_permiso         = 'tarjeta';
         $readTarjeta         = Permission::create(['name' => "{$nom_permiso}.read"]);

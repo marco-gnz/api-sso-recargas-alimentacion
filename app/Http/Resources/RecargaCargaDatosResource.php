@@ -67,6 +67,7 @@ class RecargaCargaDatosResource extends JsonResource
             'last_asistencia'               => $this->asistencias()->count() > 0 ? Carbon::parse($this->asistencias()->orderBy('created_at', 'DESC')->first()->created_at)->format('d-m-Y H:i:s') : null,
             'last_ausentismo'               => $this->ausentismos()->count() > 0 ? Carbon::parse($this->ausentismos()->orderBy('created_at', 'DESC')->first()->created_at)->format('d-m-Y H:i:s') : null,
             'last_viatico'                  => $this->viaticos()->count() > 0 ? Carbon::parse($this->viaticos()->orderBy('created_at', 'DESC')->first()->created_at)->format('d-m-Y H:i:s') : null,
+            'last_ajuste'                   => $this->reajustes()->count() > 0 ? Carbon::parse($this->reajustes()->where('tipo_carga', true)->orderBy('created_at', 'DESC')->first()->created_at)->format('d-m-Y H:i:s') : null,
         ];
     }
 }

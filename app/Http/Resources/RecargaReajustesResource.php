@@ -47,6 +47,7 @@ class RecargaReajustesResource extends JsonResource
             'esquema_uuid'          => $this->esquema->uuid,
             'uuid_funcionario'      => $this->funcionario != null ? "{$this->funcionario->uuid}" : null,
             'nombres_funcionario'   => $this->funcionario != null ? "{$this->funcionario->nombres} {$this->funcionario->apellidos}" : null,
+            'rut_funcionario'       => $this->funcionario != null ? $this->funcionario->rut_completo : null,
             'fecha_inicio'          => $fecha_inicio,
             'fecha_termino'         => $fecha_termino,
             'dias_periodo'          => $this->dias_periodo,
@@ -62,7 +63,8 @@ class RecargaReajustesResource extends JsonResource
             'tipo_ausentismo'       => $this->tipoAusentismo != null ? $this->tipoAusentismo->sigla : null,
             'tipo_incremento'       => $this->tipoIncremento != null ? $this->tipoIncremento->sigla : null,
             'observacion'           => $this->observacion,
-            'es_turnante'           => $this->esTurnante($this->funcionario, $this->recarga)
+            'es_turnante'           => $this->esTurnante($this->funcionario, $this->recarga),
+            'tipo_carga'            => $this->tipo_carga ? 'MASIVO' : 'MANUAL'
         ];
     }
 }

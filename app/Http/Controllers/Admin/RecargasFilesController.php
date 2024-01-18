@@ -12,6 +12,8 @@ use App\Imports\Grupos\GrupoTresImport;
 use App\Imports\Grupos\GrupoTresImportStore;
 use App\Imports\Grupos\GrupoUnoImport;
 use App\Imports\Grupos\GrupoUnoImportStore;
+use App\Imports\ReajusteImport;
+use App\Imports\ReajusteImportStore;
 use App\Imports\UsersImport;
 use App\Imports\UsersImportStore;
 use App\Imports\UserTurnoImport;
@@ -145,6 +147,11 @@ class RecargasFilesController extends Controller
                         $import = new ViaticosImport($recarga, $new_columnas, $row_columnas);
                         Excel::import($import, $file);
                         break;
+
+                    case 'ajustes':
+                        $import = new ReajusteImport($recarga, $new_columnas, $row_columnas);
+                        Excel::import($import, $file);
+                        break;
                 }
 
                 if (count($import->data)) {
@@ -156,6 +163,16 @@ class RecargasFilesController extends Controller
                                 'message'                    => null,
                                 'ausentismos'                => $import->data,
                                 'ausentismos_sobrante'       => [],
+                            )
+                        );
+                    } else if ($id_carga === 'ajustes') {
+                        return response()->json(
+                            array(
+                                'status'                     => 'Success',
+                                'title'                      => null,
+                                'message'                    => null,
+                                'ajustes'                    => $import->data,
+                                'ajustes_sobrante'           => $import->data_sobrante,
                             )
                         );
                     } else {
@@ -270,6 +287,11 @@ class RecargasFilesController extends Controller
 
                     case 'viaticos':
                         $import = new ViaticosImportStore($recarga, $new_columnas, $row_columnas);
+                        $save = Excel::import($import, $file);
+                        break;
+
+                    case 'ajustes':
+                        $import = new ReajusteImportStore($recarga, $new_columnas, $row_columnas);
                         $save = Excel::import($import, $file);
                         break;
                 }

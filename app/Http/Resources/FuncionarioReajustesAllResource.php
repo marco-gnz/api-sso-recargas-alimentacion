@@ -24,7 +24,8 @@ class FuncionarioReajustesAllResource extends JsonResource
 
         return [
             'uuid'                  => $this->uuid,
-            'nombres_funcionario'   => $this->funcionario != null ? "{$this->funcionario->nombres} {$this->funcionario->apellidos}" : null,
+            'nombres_funcionario'   => $this->funcionario != null ? "{$this->funcionario->nombres} {$this->funcionario->apellidos}" : null,'rut_funcionario'       => $this->funcionario != null ? $this->funcionario->rut_completo : null,
+            'rut_funcionario'       => $this->funcionario != null ? $this->funcionario->rut_completo : null,
             'fecha_inicio'          => $fecha_inicio,
             'fecha_termino'         => $fecha_termino,
             'dias_periodo'          => $this->dias_periodo,
@@ -45,7 +46,10 @@ class FuncionarioReajustesAllResource extends JsonResource
             'user_created_by'       => $this->userCreatedBy != null ? "{$this->userCreatedBy->nombres} {$this->userCreatedBy->apellidos}" : null,
             'date_created_user'     => Carbon::parse($this->date_created_user)->format('d-m-Y H:i a'),
             'estados'               => EstadosReajusteResource::collection($this->estados),
-            'alertas'               => AlertasReajuste::collection($this->alertas)
+            'alertas'               => AlertasReajuste::collection($this->alertas),
+            'tipo_carga'            => $this->tipo_carga ? 'MASIVO' : 'MANUAL',
+            'esquema_dc'            => $this->esquema->total_dias_cancelar,
+            'esquema_mc'            => "$".number_format($this->esquema->monto_total_cancelar, 0, ',', '.')
         ];
     }
 }

@@ -394,7 +394,7 @@ class ColumnasImportController extends Controller
                         'formato'               => $this->fecha_2,
                         'formato_excel'         => (int)$format_excel,
                         'required'              => true,
-                        'descripcion'           => "Corresponde a {$i_format}",
+                        'descripcion'           => "Turno L, N o X corresponde a {$i_format}",
                         'disabled'              => true
                     ];
 
@@ -515,6 +515,79 @@ class ColumnasImportController extends Controller
                 'formato'               => $this->numerico,
                 'required'              => true,
                 'descripcion'           => "Valor de viático"
+            ],
+        ];
+        return $columnas;
+    }
+
+    public function columnasImportAjustes()
+    {
+        $columnas   = [
+            [
+                'nombre_columna'        => 'rut',
+                'formato'               => $this->numerico,
+                'required'              => true,
+                'descripcion'           => 'Rut de funcionario'
+            ],
+            [
+                'nombre_columna'        => 'dv',
+                'formato'               => $this->texto,
+                'required'              => true,
+                'descripcion'           => 'Dígito verificador'
+            ],
+            [
+                'nombre_columna'        => 'fecha inicio',
+                'formato'               => $this->fecha,
+                'required'              => true,
+                'descripcion'           => 'Fecha inicio de ajuste'
+            ],
+            [
+                'nombre_columna'        => 'fecha termino',
+                'formato'               => $this->fecha,
+                'required'              => true,
+                'descripcion'           => 'Fecha término de ajuste'
+            ],
+            [
+                'nombre_columna'        => 'incremento',
+                'formato'               => $this->texto,
+                'required'              => true,
+                'descripcion'           => 'REBAJA - INCREMENTO'
+            ],
+            [
+                'nombre_columna'        => 'tipo ajuste',
+                'formato'               => $this->texto,
+                'required'              => true,
+                'descripcion'           => 'DIAS - MONTO'
+            ],
+            [
+                'nombre_columna'        => 'causal rebaja',
+                'formato'               => $this->texto,
+                'required'              => true,
+                'descripcion'           => 'Nombre de motivo de rebaja (ausentismos) listados en SBA. Requerida solo si es REBAJA.'
+            ],
+            [
+                'nombre_columna'        => 'causal incremento',
+                'formato'               => $this->texto,
+                'required'              => true,
+                'descripcion'           => 'Nombre de motivo de incremento listados en SBA. Requerida solo si es INCREMENTO.'
+            ],
+            [
+                'nombre_columna'        => 'total dias ajuste',
+                'formato'               => $this->numerico,
+                'required'              => true,
+                'descripcion'           => '*Total de días a ajustar*'
+            ],
+            [
+                'nombre_columna'        => 'valor dia',
+                'formato'               => $this->numerico,
+                'required'              => true,
+                'descripcion'           => 'Valor de día beneficio. Requerida solo si el tipo de ajuste es por MONTO.'
+            ],
+            [
+                'nombre_columna'        => 'observacion',
+                'formato'               => $this->texto,
+                'required'              => true,
+                'descripcion'           => 'Observación de ajuste'
             ],
         ];
         return $columnas;

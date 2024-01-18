@@ -56,7 +56,15 @@ class ModulosController extends Controller
         try {
             $recarga    = $this->findRecarga($codigo);
             $estados    = $request->estados;
-            $ajustes    = $recarga->reajustes()->input($request->input)->tipos($request->tipos)->estados($request->estados)->rebajaIncremento($request->rebaja_incremento)->paginate(40);
+            $ajustes    = $recarga->reajustes()
+                ->input($request->input)
+                ->tipos($request->tipos)
+                ->estados($request->estados)
+                ->rebajaIncremento($request->rebaja_incremento)
+                ->tipoCarga($request->tipo_carga)
+                ->causalRebaja($request->causal_rebaja)
+                ->causalIncremento($request->causal_incremento)
+                ->paginate(40);
 
             return response()->json(
                 array(

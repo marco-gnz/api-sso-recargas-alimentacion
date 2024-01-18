@@ -46,6 +46,7 @@ class Reajuste extends Model
         'incremento',
         'tipo_reajuste',
         'last_status',
+        'tipo_carga',
         'user_id',
         'tipo_ausentismo_id',
         'tipo_incremento_id',
@@ -168,5 +169,23 @@ class Reajuste extends Model
     {
         if ($rebaja_incremento)
             return $query->whereIn('incremento', $rebaja_incremento);
+    }
+
+    public function scopeTipoCarga($query, $tipo_carga)
+    {
+        if ($tipo_carga)
+            return $query->whereIn('tipo_carga', $tipo_carga);
+    }
+
+    public function scopeCausalRebaja($query, $causales)
+    {
+        if ($causales)
+            return $query->whereIn('tipo_ausentismo_id', $causales);
+    }
+
+    public function scopeCausalIncremento($query, $causales)
+    {
+        if ($causales)
+            return $query->whereIn('tipo_incremento_id', $causales);
     }
 }
