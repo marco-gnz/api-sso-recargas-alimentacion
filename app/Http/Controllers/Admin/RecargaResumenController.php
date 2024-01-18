@@ -231,7 +231,6 @@ class RecargaResumenController extends Controller
                     return json_decode($ordenamientos, true);
                 }, $ordenamientos);
             }
-
             if ($request->ordenamiento) {
                 foreach ($decodificado as $ordenamiento) {
                     $index      = $ordenamiento['index'];
@@ -246,7 +245,6 @@ class RecargaResumenController extends Controller
                     }
                 }
             }
-
             $esquemas = $esquemas->paginate(30);
             $recarga->{'total_clp'} = $esquemas->sum('monto_total_cancelar');
 

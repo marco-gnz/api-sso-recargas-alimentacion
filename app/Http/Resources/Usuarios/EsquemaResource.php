@@ -23,6 +23,7 @@ class EsquemaResource extends JsonResource
             'monto_total_cancelar_format'       => "$" . number_format($this->monto_total_cancelar, 0, ",", "."),
             'mes_beneficio'                     => Carbon::createFromDate($this->recarga->anio_beneficio,$this->recarga->mes_beneficio, '01', $tz)->locale('es')->monthName,
             'anio_beneficio'                    => $this->recarga->anio_beneficio,
+            'establecimiento'                   => $this->recarga->establecimiento->sigla
         ];
     }
 }

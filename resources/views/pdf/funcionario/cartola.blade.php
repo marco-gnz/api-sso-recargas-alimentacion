@@ -172,11 +172,11 @@
                         </tr>
                         <tr>
                             <th>Periodo de cálculo de ausentismos:</th>
-                            <td>{{ $titulo_cartola->mes_calculo }}/{{ $titulo_cartola->anio_calculo }}</td>
+                            <td>{{ $titulo_cartola->mes_calculo }} / {{ $titulo_cartola->anio_calculo }}</td>
                         </tr>
                         <tr>
                             <th>Periodo de beneficio:</th>
-                            <td>{{ $titulo_cartola->mes_beneficio }}/{{ $titulo_cartola->anio_beneficio }}</td>
+                            <td>{{ $titulo_cartola->mes_beneficio }} / {{ $titulo_cartola->anio_beneficio }}</td>
                         </tr>
                         <tr>
                             <th>Monto a cancelar por día:</th>
