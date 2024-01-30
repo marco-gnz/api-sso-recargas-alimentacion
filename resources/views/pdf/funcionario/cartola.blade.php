@@ -73,21 +73,26 @@
 
         .section-borde {
             border: 1px solid #d1d1d1;
-            margin-top: 20px;
+            margin-top: 10px; /* Reducir el espacio superior */
         }
 
         .section-position {
             margin-left: 10px;
         }
 
-        table.table-datos-contractuales,
-        table.table-datos-contractuales th,
-        table.table-datos-contractuales td {
-            border: 0.3px solid black;
+        table.table-datos-contractuales {
+            width: 100%;
             border-collapse: collapse;
-            border-color: #96D4D4;
             margin-bottom: 10px;
             margin-left: -5px;
+        }
+
+        table.table-datos-contractuales th,
+        table.table-datos-contractuales td {
+            text-align: left; /* Mantén la alineación a la izquierda */
+            border: 0.1px solid black;
+            padding: 5px; /* Ajusta el espaciado interno de las celdas según tus preferencias */
+            white-space: nowrap; /* Evita el salto de línea dentro de las celdas */
         }
         @media print {
             .page-break {
@@ -138,7 +143,7 @@
                 <table>
                     <tbody>
                         <tr>
-                            <th>RUN:</th>
+                            <th>RUT:</th>
                             <td>{{ $esquema->funcionario->rut_completo }}</td>
                         </tr>
                         <tr>
@@ -172,11 +177,11 @@
                         </tr>
                         <tr>
                             <th>Periodo de cálculo de ausentismos:</th>
-                            <td>{{ $titulo_cartola->mes_calculo }} / {{ $titulo_cartola->anio_calculo }}</td>
+                            <td>{{ $titulo_cartola->mes_calculo }} {{ $titulo_cartola->anio_calculo }}</td>
                         </tr>
                         <tr>
                             <th>Periodo de beneficio:</th>
-                            <td>{{ $titulo_cartola->mes_beneficio }} / {{ $titulo_cartola->anio_beneficio }}</td>
+                            <td>{{ $titulo_cartola->mes_beneficio }} {{ $titulo_cartola->anio_beneficio }}</td>
                         </tr>
                         <tr>
                             <th>Monto a cancelar por día:</th>
@@ -250,17 +255,17 @@
                 @if (count($esquema->ausentismos) > 0)
                     <table class="table-datos-contractuales">
                         <thead>
-                            <th>Fecha en periodo</th>
+                            <th>Fecha en periodo de beneficio</th>
                             <th>Días</th>
                             <th>Días hábiles</th>
-                            <th>Tipo de ausentismo</th>
+                            <th>Tipo</th>
                             <th>Descuento</th>
                         </thead>
                         <tbody>
                             @foreach ($esquema->ausentismos as $ausentismo)
                                 <tr>
                                     <td>{{ $ausentismo->fecha_inicio_periodo != null ? Carbon\Carbon::parse($ausentismo->fecha_inicio_periodo)->format('d-m-Y') : '--' }}
-                                        a
+                                        /
                                         {{ $ausentismo->fecha_termino_periodo != null ? Carbon\Carbon::parse($ausentismo->fecha_termino_periodo)->format('d-m-Y') : '--' }}
                                     </td>
                                     <td>{{ $ausentismo->total_dias_ausentismo_periodo ? round($ausentismo->total_dias_ausentismo_periodo) : '--' }}</td>
@@ -279,7 +284,7 @@
                 @if (count($esquema->viaticos) > 0)
                     <table class="table-datos-contractuales">
                         <thead>
-                            <th>Fecha en periodo</th>
+                            <th>Fecha en periodo de beneficio</th>
                             <th>Días</th>
                             <th>Días hábiles</th>
                             <th>Jornada</th>
@@ -290,7 +295,7 @@
                             @foreach ($esquema->viaticos as $viatico)
                                 <tr>
                                     <td>{{ $viatico->fecha_inicio_periodo != null ? Carbon\Carbon::parse($viatico->fecha_inicio_periodo)->format('d-m-Y') : '--' }}
-                                        a
+                                        /
                                         {{ $viatico->fecha_termino_periodo != null ? Carbon\Carbon::parse($viatico->fecha_termino_periodo)->format('d-m-Y') : '--' }}
                                     </td>
                                     <td>{{ $viatico->total_dias_periodo }}</td>
@@ -314,7 +319,7 @@
                     <table class="table-datos-contractuales">
                         <thead>
                             <th>Fecha</th>
-                            <th>Rebaja/Incremento</th>
+                            <th>Rebaja / Incremento</th>
                             <th>Causal</th>
                             <th>Días</th>
                             <th>Tipo</th>
@@ -324,7 +329,7 @@
                             @foreach ($esquema->reajustes as $reajuste)
                             <tr>
                                 <td>{{ $reajuste->fecha_inicio != null ? Carbon\Carbon::parse($reajuste->fecha_inicio)->format('d-m-y') : '--' }}
-                                    a
+                                    /
                                     {{ $reajuste->fecha_termino != null ? Carbon\Carbon::parse($reajuste->fecha_termino)->format('d-m-y') : '--' }}
                                 </td>
                                 <td>{{ $reajuste->incremento ? 'Incremento' : 'Rebaja' }}</td>
@@ -361,28 +366,28 @@
                 <h3 class="title">Detalle final</h3>
                 <table class="table-datos-contractuales">
                     <thead>
-                        <th>#</th>
-                        <th>Total días</th>
+                        <th></th>
+                        <th>Total</th>
                     </thead>
                     <tbody>
                         <tr>
-                            <td>Total días contrato</td>
+                            <td>Total días de contrato</td>
                             <td>{{$esquema->calculo_contrato}}</td>
                         </tr>
                         <tr>
-                            <td>Total días turno</td>
+                            <td>Total días de turno</td>
                             <td>{{$esquema->calculo_turno}}</td>
                         </tr>
                         <tr>
-                            <td>Total días ausentismos</td>
+                            <td>Total días de ausentismos</td>
                             <td>{{$esquema->calculo_grupo_uno + $esquema->calculo_grupo_dos + $esquema->calculo_grupo_tres}}</td>
                         </tr>
                         <tr>
-                            <td>Total días cometidos</td>
+                            <td>Total días de cometidos</td>
                             <td>{{$esquema->calculo_viaticos}}</td>
                         </tr>
                         <tr>
-                            <td>Total días ajustes</td>
+                            <td>Total días de ajustes</td>
                             <td>{{$esquema->calculo_dias_ajustes}}</td>
                         </tr>
                         <tr>
@@ -394,8 +399,8 @@
                             <td>{{$esquema->total_dias_cancelar}}</td>
                         </tr>
                         <tr>
-                            <td>Total monto</td>
-                            <td>${{number_format($esquema->monto_total_cancelar, 0, ",", ".")}}</td>
+                            <td><strong>TOTAL MONTO</strong></td>
+                            <td><strong>{{"$".number_format($esquema->monto_total_cancelar, 0, ",", ".")}}</strong></td>
                         </tr>
                     </tbody>
                 </table>
