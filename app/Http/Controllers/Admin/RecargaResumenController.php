@@ -795,7 +795,6 @@ class RecargaResumenController extends Controller
                 'calculo_grupo_uno'              => $total_grupo
             ]);
         } catch (\Exception $error) {
-            Log::info($error->getMessage());
             return $error->getMessage();
         }
     }
@@ -1045,6 +1044,10 @@ class RecargaResumenController extends Controller
                 case 'viatico':
                     $response = $this->deleteRecords($recarga, 'viaticos', null);
                     break;
+
+                case 'reajuste':
+                    $response = $this->deleteRecords($recarga, 'reajustes', null);
+                    break;
             }
 
             $withReReglas             = $this->withReReglas($request->load_grupo);
@@ -1166,8 +1169,13 @@ class RecargaResumenController extends Controller
     {
         try {
             if (!$grupo_id) {
-                $total   = $recarga->$relation()->count();
-                $records = $recarga->$relation()->get();
+                if ($relation === 'reajustes') {
+                    $total   = $recarga->$relation()->where('tipo_carga', true)->count();
+                    $records = $recarga->$relation()->where('tipo_carga', true)->get();
+                } else {
+                    $total   = $recarga->$relation()->count();
+                    $records = $recarga->$relation()->get();
+                }
             } else {
                 $total   = $recarga->$relation()->where('grupo_id', $grupo_id)->count();
                 $records = $recarga->$relation()->where('grupo_id', $grupo_id)->get();
@@ -1184,9 +1192,15 @@ class RecargaResumenController extends Controller
                 return $response;
             }
 
-            $records->each(function ($record) {
-                $record->delete();
-            });
+            if ($relation === 'reajustes') {
+                $records->each(function ($record) {
+                    $esquema = $record->esquema;
+                    $record->delete();
+                    $esquema = $esquema->fresh();
+                    $cartola_controller = new ActualizarEsquemaController;
+                    $cartola_controller->updateEsquemaAjustes($esquema);
+                });
+            }
 
             $response = (object) [
                 'status'  => 'Success',

@@ -382,19 +382,14 @@ class ActualizarEsquemaController extends Controller
     {
         try {
             if ($esquema) {
-                $ajustes                = $esquema->reajustes()->get();
+                $ajustes = $esquema->reajustes()->get();
 
-                $dias_periodo           = $ajustes->where('last_status', 1)->where('tipo_reajuste', 0)->sum('dias_periodo');
-                $dias_periodo_habiles   = $ajustes->where('last_status', 1)->where('tipo_reajuste', 0)->sum('dias_periodo_habiles');
-                $total_dias             = $ajustes->where('last_status', 1)->where('tipo_reajuste', 0)->sum('total_dias');
-                $total_monto_ajuste     = $ajustes->where('last_status', 1)->where('tipo_reajuste', 1)->sum('monto_ajuste');
                 $data = [
-                    'total_dias_ajustes'        => $dias_periodo,
-                    'dias_periodo_habiles'      => $dias_periodo_habiles,
+                    'total_dias_ajustes'        => $ajustes->where('last_status', 1)->where('tipo_reajuste', 0)->sum('dias_periodo'),
+                    'dias_periodo_habiles'      => $ajustes->where('last_status', 1)->where('tipo_reajuste', 0)->sum('dias_periodo_habiles'),
                     'ajustes_dias_n_registros'  => $ajustes->where('tipo_reajuste', 0)->count(),
-                    'calculo_dias_ajustes'      => $total_dias,
-
-                    'total_monto_ajuste'        => $total_monto_ajuste,
+                    'calculo_dias_ajustes'      => $ajustes->where('last_status', 1)->where('tipo_reajuste', 0)->sum('total_dias'),
+                    'total_monto_ajuste'        => $ajustes->where('last_status', 1)->where('tipo_reajuste', 1)->sum('monto_ajuste'),
                     'ajustes_monto_n_registros' => $ajustes->where('tipo_reajuste', 1)->count(),
                 ];
 

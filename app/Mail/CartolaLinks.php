@@ -28,7 +28,7 @@ class CartolaLinks extends Mailable
      */
     public function build()
     {
-        return $this->markdown('emails.cartola-links')->subject("SBA - Envío de cartola")->withSwiftMessage(function($message){
+        return $this->markdown('emails.cartola-links')->subject("SBA - Envío de cartola")->withSwiftMessage(function ($message) {
             $message->setPriority(\Swift_Message::PRIORITY_HIGHEST);
         });
     }

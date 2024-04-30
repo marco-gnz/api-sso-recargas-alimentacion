@@ -409,7 +409,8 @@ class ReajusteImport implements WithValidation, ToCollection, WithHeadingRow
             ],
             $this->total_dias => [
                 'required',
-                'numeric'
+                'numeric',
+                'integer'
             ],
             $this->valor_dia => [
                 'required_if:incremento,MONTO',
@@ -448,6 +449,7 @@ class ReajusteImport implements WithValidation, ToCollection, WithHeadingRow
 
             "{$this->total_dias}.required"                                  => 'El total de días es obligatorio.',
             "{$this->total_dias}.numeric"                                   => 'El total de días debe ser numérico.',
+            "{$this->total_dias}.integer"                                   => 'El total de días debe ser número entero.',
 
             "{$this->valor_dia}.required_if"                                => 'El valor del día es obligatorio.',
             "{$this->valor_dia}.numeric"                                    => 'El valor del día debe ser numérico.',
