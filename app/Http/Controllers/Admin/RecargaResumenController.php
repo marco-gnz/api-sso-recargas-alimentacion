@@ -1018,15 +1018,15 @@ class RecargaResumenController extends Controller
                     break;
 
                 case 'contrato':
-                    $response = $this->deleteRecords($recarga, 'contratos', null);
+                    $response = $this->deleteRecords($recarga, 'contratos');
                     break;
 
                 case 'asignacion':
-                    $response = $this->deleteRecords($recarga, 'asignaciones', null);
+                    $response = $this->deleteRecords($recarga, 'asignaciones');
                     break;
 
                 case 'asistencias':
-                    $response = $this->deleteRecords($recarga, 'asistencias', null);
+                    $response = $this->deleteRecords($recarga, 'asistencias');
                     break;
 
                 case 'ausentismos_grupo_uno':
@@ -1042,11 +1042,11 @@ class RecargaResumenController extends Controller
                     break;
 
                 case 'viatico':
-                    $response = $this->deleteRecords($recarga, 'viaticos', null);
+                    $response = $this->deleteRecords($recarga, 'viaticos');
                     break;
 
                 case 'reajuste':
-                    $response = $this->deleteRecords($recarga, 'reajustes', null);
+                    $response = $this->deleteRecords($recarga, 'reajustes');
                     break;
             }
 
@@ -1165,10 +1165,10 @@ class RecargaResumenController extends Controller
         return $response;
     }
 
-    private function deleteRecords($recarga, $relation, $grupo_id)
+    private function deleteRecords($recarga, $relation, $grupo_id = null)
     {
         try {
-            if (!$grupo_id) {
+            if ($grupo_id === null) {
                 if ($relation === 'reajustes') {
                     $total   = $recarga->$relation()->where('tipo_carga', true)->count();
                     $records = $recarga->$relation()->where('tipo_carga', true)->get();
@@ -1188,19 +1188,15 @@ class RecargaResumenController extends Controller
                     'title'   => 'Error al eliminar datos',
                     'message' => 'No existen registros para eliminar'
                 ];
-
-                return $response;
             }
 
-            if ($relation === 'reajustes') {
-                $records->each(function ($record) {
-                    $esquema = $record->esquema;
-                    $record->delete();
-                    $esquema = $esquema->fresh();
-                    $cartola_controller = new ActualizarEsquemaController;
-                    $cartola_controller->updateEsquemaAjustes($esquema);
-                });
-            }
+            $records->each(function ($record) {
+                $esquema = $record->esquema;
+                $record->delete();
+                $esquema = $esquema->fresh();
+                $cartola_controller = new ActualizarEsquemaController;
+                $cartola_controller->updateEsquemaAjustes($esquema);
+            });
 
             $response = (object) [
                 'status'  => 'Success',
