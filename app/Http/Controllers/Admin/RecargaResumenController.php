@@ -1193,9 +1193,11 @@ class RecargaResumenController extends Controller
             $records->each(function ($record) {
                 $esquema = $record->esquema;
                 $record->delete();
-                $esquema = $esquema->fresh();
-                $cartola_controller = new ActualizarEsquemaController;
-                $cartola_controller->updateEsquemaAjustes($esquema);
+                if($esquema){
+                    $esquema = $esquema->fresh();
+                    $cartola_controller = new ActualizarEsquemaController;
+                    $cartola_controller->updateEsquemaAjustes($esquema);
+                }
             });
 
             $response = (object) [
