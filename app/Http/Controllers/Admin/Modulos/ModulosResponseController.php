@@ -20,6 +20,7 @@ use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Spatie\Permission\Models\Role;
 
 class ModulosResponseController extends Controller
@@ -363,9 +364,22 @@ class ModulosResponseController extends Controller
                         }
                     }
                 }
+
+                $feriados_adicionales = $this->feriadosEspeciales($recarga, $fechas);
+
+                $new_feriados = array_map(function ($feriado) {
+                    return is_object($feriado) ? (array) $feriado : $feriado;
+                }, $new_feriados);
+
+                $feriados_adicionales = array_map(function ($feriado) {
+                    return is_object($feriado) ? (array) $feriado : $feriado;
+                }, $feriados_adicionales);
+
+                $feriados_ok = array_merge($new_feriados, $feriados_adicionales);
             }
-            return FeriadosResource::collection($new_feriados);
+            return FeriadosResource::collection($feriados_ok);
         } catch (\Exception $error) {
+            Log::info($error->getMessage());
             return $error->getMessage();
         }
     }
@@ -405,6 +419,52 @@ class ModulosResponseController extends Controller
             }
         } catch (\Error $error) {
             return $error->getMessage();
+        }
+    }
+
+    private function feriadosEspeciales($recarga, $fechas)
+    {
+        try {
+            $feriados_recarga_query = $recarga->feriados()->get()->pluck('fecha')->toArray();
+            $feriados_sistema = Feriado::where(function ($q) use ($recarga) {
+                $q->where(function ($q) use ($recarga) {
+                    $q->where('anio', $recarga->anio_beneficio)
+                        ->where('mes', $recarga->mes_beneficio);
+                })->orWhere(function ($q) use ($recarga) {
+                    $q->where('anio', $recarga->anio_calculo)
+                        ->where('mes', $recarga->mes_calculo);
+                });
+            })
+                ->where('tipo', 'Especial');
+
+            if (count($fechas) > 0) {
+                $collectionSinNull = $fechas->filter(function ($value) {
+                    return !is_null($value);
+                });
+
+                $collectionSinNull = $collectionSinNull->values();
+                $feriados_sistema = $feriados_sistema->whereNotIn('fecha', $collectionSinNull);
+            }
+
+            if ($feriados_recarga_query) {
+                $feriados_sistema = $feriados_sistema->whereNotIn('fecha', $feriados_recarga_query);
+            }
+
+            $feriados_sistema = $feriados_sistema->get();
+
+            $feriados_adicionales = $feriados_sistema->map(function ($feriado) {
+                return (object) [
+                    'nombre'        => $feriado->nombre, // Notación de flecha
+                    'comentarios'   => null,
+                    'fecha'         => $feriado->fecha,
+                    'irrenunciable' => "0",
+                    'tipo'          => 'Especial',
+                ];
+            })->toArray();
+
+            return $feriados_adicionales;
+        } catch (\Error $error) {
+            Log::info($error->getMessage());
         }
     }
 }
