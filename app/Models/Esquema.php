@@ -236,26 +236,64 @@ class Esquema extends Model
         });
 
         static::deleting(function ($esquema) {
-            if($esquema->contratos){
+            if ($esquema->contratos) {
                 $esquema->contratos()->update(['esquema_id' => null]);
             }
 
-            if($esquema->turnos){
+            if ($esquema->turnos) {
                 $esquema->turnos()->update(['esquema_id' => null]);
             }
 
-            if($esquema->asistencias){
+            if ($esquema->asistencias) {
                 $esquema->asistencias()->update(['esquema_id' => null]);
             }
 
-            if($esquema->ausentismos){
+            if ($esquema->ausentismos) {
                 $esquema->ausentismos()->update(['esquema_id' => null]);
             }
 
-            if($esquema->viaticos){
+            if ($esquema->viaticos) {
                 $esquema->viaticos()->update(['esquema_id' => null]);
             }
         });
+    }
+
+    public function tituloCartola()
+    {
+        setlocale(LC_ALL, "es_ES");
+        Carbon::setLocale('es');
+        $tz = 'America/Santiago';
+
+        $fecha_emision = $this->recarga->estados()
+            ->orderBy('created_at', 'desc')
+            ->first();
+
+        $titulo_cartola = (object) [
+            'anio_beneficio'  => $this->recarga->anio_beneficio,
+            'mes_beneficio'   => strtoupper(Carbon::createFromDate(
+                $this->recarga->anio_beneficio,
+                $this->recarga->mes_beneficio,
+                '01',
+                $tz
+            )->locale('es')->monthName),
+            'anio_calculo'    => $this->recarga->anio_calculo,
+            'mes_calculo'     => strtoupper(Carbon::createFromDate(
+                $this->recarga->anio_calculo,
+                $this->recarga->mes_calculo,
+                '01',
+                $tz
+            )->locale('es')->monthName),
+            'monto_dia'       => "$" . number_format($this->recarga->monto_dia, 0, ",", "."),
+            'fecha_emision'   => $fecha_emision ? Carbon::parse($fecha_emision->created_at)->format('d-m-Y') : null,
+            'establecimiento' => $this->recarga->establecimiento ? $this->recarga->establecimiento->nombre : null,
+        ];
+        return $titulo_cartola;
+    }
+
+    public function nameFieldPdf()
+    {
+        $name_field = "Cartola_{$this->funcionario->rut}_{$this->recarga->anio_beneficio}_{$this->recarga->mes_beneficio}.pdf";
+        return $name_field;
     }
 
     public function scopeInput($query, $input)

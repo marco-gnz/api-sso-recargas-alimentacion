@@ -26,10 +26,44 @@ class CartolaLinks extends Mailable
      *
      * @return $this
      */
+
     public function build()
     {
-        return $this->markdown('emails.cartola-links')->subject("SBA - Envío de cartola")->withSwiftMessage(function ($message) {
-            $message->setPriority(\Swift_Message::PRIORITY_HIGHEST);
-        });
+        try {
+            $email = $this->markdown('emails.cartola-links')
+                ->subject("SBA - Cartola beneficio de alimentación")
+                ->withSwiftMessage(function ($message) {
+                    $message->setPriority(\Swift_Message::PRIORITY_HIGHEST);
+                });
+
+            foreach ($this->esquemas as $esquema) {
+                $pdf = \PDF::loadView('pdf.funcionario.cartola', [
+                    'esquema' => $esquema,
+                ]);
+
+                $pdf->setOptions([
+                    'chroot' => public_path('/img/'),
+                ]);
+
+                $password_funcionario   = $esquema->funcionario->rut;
+                $password_admin         = "1234";
+                $pdf->setEncryption($password_funcionario, $password_admin, ['copy', 'print', 'modify']);
+
+                $pdfContent = $pdf->output();
+
+                $email->attachData($pdfContent, $esquema->nameFieldPdf(), [
+                    'mime' => 'application/pdf',
+                ]);
+            }
+
+            return $email;
+        } catch (\Exception $e) {
+            \Log::error("Error al construir el correo: " . $e->getMessage(), [
+                'esquemas' => array_map(fn($esquema) => $esquema->id ?? null, $this->esquemas),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            throw $e;
+        }
     }
+
 }

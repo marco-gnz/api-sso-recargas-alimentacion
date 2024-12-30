@@ -1,17 +1,12 @@
 @extends('emails.plantilla_maestra')
 
 @section('contenido')
-    <h1>Envío de cartola</h1>
-    <p>Estimado(a): {{ $esquema->funcionario->nombre_completo }}</p>
-    <p>Te informamos que se ha generado el acceso directo a la cartola mensual correspondiente al beneficio de alimentación
+    <p><b>Estimada(o): {{ $esquema->funcionario->nombre_completo }}</b></p>
+    <p>A continuación adjuntamos la cartola mensual correspondiente al beneficio de alimentación
         del mes de {{ \Carbon\Carbon::createFromFormat('m', $esquema->recarga->mes_beneficio)->locale('es')->monthName }} del
         año {{ $esquema->recarga->anio_beneficio }}.</p>
-    <p>Cartola:</p>
-    <ul>
-        <li><a href="{{ url("/funcionario/cartola/{$esquema->uuid}") }}">{{ $esquema->recarga->establecimiento->sigla }} -
-                Cartola del mes {{ $esquema->recarga->mes_beneficio }}-{{ $esquema->recarga->anio_beneficio }}</a></li>
-    </ul>
-    <p>El acceso está encriptado, el cual podrás abrir utilizando como contraseña tu <b>RUT sin guion ni dígito
+    <p>En caso de no poder descargar la cartola (PDF), por favor hacer clic en el siguiente enlace (se permite el acceso únicamente desde red MINSAL): <a href="{{ url("/funcionario/cartola/{$esquema->uuid}") }}">{{url("/funcionario/cartola/{$esquema->uuid}")}}</a></p>
+    <p>El acceso a la cartola está encriptado, el cual podrás abrir utilizando como contraseña tu <b>RUT sin guion ni dígito
             verificador.</b></p>
     <p>En caso de dudas o consultas, dirigir correo a
         @if ($esquema->recarga->establecimiento->cod_sirh === 1025)
@@ -31,9 +26,6 @@
         @endif
     </p>
 
-    <p>Se permite el acceso únicamente desde red MINSAL.</p>
-
-    <p><i>No responder a este correo electrónico: Este mensaje se ha enviado desde una dirección exclusiva para envío de
-            correos automatizados, por lo tanto, no se reciben respuestas en esta cuenta.</i></p>
+    <p><i>No responder a este correo: Este mensaje se envió desde una cuenta exclusiva para envíos automatizados y no recibe respuestas.</i></p>
     <p>Atentamente,</p>
 @endsection

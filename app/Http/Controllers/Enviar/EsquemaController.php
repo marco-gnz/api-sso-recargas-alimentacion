@@ -77,7 +77,12 @@ class EsquemaController extends Controller
     public function enviarCartola(EnviarCartolaRequest $request)
     {
         try {
-            $esquemas = Esquema::whereIn('uuid', $request->esquema_id)->get();
+            $esquemas = Esquema::whereIn('uuid', $request->esquema_id)
+                ->select('esquemas.*')
+                ->join('recargas', 'recargas.id', '=', 'esquemas.recarga_id')
+                ->orderBy('recargas.anio_beneficio', 'DESC')
+                ->orderBy('recargas.mes_beneficio', 'DESC')
+                ->get();
             $email = $request->email;
 
             if ($esquemas && $email) {

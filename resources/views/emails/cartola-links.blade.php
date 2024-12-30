@@ -1,17 +1,15 @@
 @extends('emails.plantilla_maestra')
 
 @section('contenido')
-    <h1>Envío de cartolas</h1>
-    <p>Estimado(a),</p>
-    <p>Te informamos que se ha generado el acceso directo a cartolas mensuales, correspondiente al beneficio de
+    <p><b>Estimada(o),</b></p>
+    <p>A continuación adjuntamos las cartolas mensuales, correspondiente al beneficio de
         alimentación.</p>
-    <p>Cartolas:</p>
+    <p>En caso de no poder descargar la cartola (PDF), por favor hacer clic en el siguiente enlace (se permite el acceso únicamente desde red MINSAL):</p>
     <ul>
         @foreach ($esquemas as $esquema)
-            <li><a href="{{ url("/funcionario/cartola/{$esquema->uuid}") }}">{{ $esquema->recarga->establecimiento->sigla }}
-                    - Cartola del mes {{ $esquema->recarga->mes_beneficio }}-{{ $esquema->recarga->anio_beneficio }}</a>
+            <li><a href="{{ url("/funcionario/cartola/{$esquema->uuid}") }}">Clic para ver cartola {{ $esquema->tituloCartola()->mes_beneficio }} {{ $esquema->tituloCartola()->anio_beneficio }}</a>
             </li>
-            <p>En caso de dudas o consultas, dirigir correo a
+            <p>Dudas o consultas, dirigir correo a
                 @if ($esquema->recarga->establecimiento->cod_sirh === 1025)
                     <b>jorge.oyarzuns@redsalud.gob.cl</b>
                 @elseif($esquema->recarga->establecimiento->cod_sirh === 1027)
@@ -30,13 +28,9 @@
             </p>
         @endforeach
     </ul>
-    <p>El acceso está encriptado, el cual podrás abrir utilizando como contraseña el <b>RUT sin guion ni dígito
-            verificador</b> del funcionario beneficiario.</p>
+    <p>El acceso a la cartola está encriptado, el cual podrás abrir utilizando como contraseña tu <b>RUT sin guion ni dígito
+            verificador.</b></p>
 
-
-    <p>Se permite el acceso únicamente desde red MINSAL.</p>
-
-    <p><i>No responder a este correo electrónico: Este mensaje se ha enviado desde una dirección exclusiva para envío de
-            correos automatizados, por lo tanto, no se reciben respuestas en esta cuenta.</i></p>
+    <p><i>No responder a este correo: Este mensaje se envió desde una cuenta exclusiva para envíos automatizados y no recibe respuestas.</i></p>
     <p>Atentamente,</p>
 @endsection

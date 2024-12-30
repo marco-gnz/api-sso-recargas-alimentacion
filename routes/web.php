@@ -19,8 +19,13 @@ Route::get('/', function () {
 
 Route::get('/funcionario/cartola/{uuid_esquema}', [App\Http\Controllers\Funcionario\PdfController::class, 'showCartolaRecarga']);
 
-Route::get('email', function(){
-    $uuids = ['bab92a3e-a6e4-4a72-8b69-b73cfabe50f6', '1e651efc-8117-42fb-b66f-1aff0d4b14fc'];
-    $cartolas = App\Models\Esquema::whereIn('uuid', $uuids)->get();
-    return new App\Mail\CartolaLinks($cartolas);
+Route::get('email', function () {
+    $esquemas = App\Models\Esquema::select('esquemas.*')
+    ->join('recargas', 'recargas.id', '=', 'esquemas.recarga_id')
+    ->where('esquemas.user_id', 3)
+    ->orderBy('recargas.anio_beneficio', 'DESC')
+    ->orderBy('recargas.mes_beneficio', 'DESC')
+    ->take(5)
+    ->get();
+    return new App\Mail\CartolaLinks($esquemas);
 });

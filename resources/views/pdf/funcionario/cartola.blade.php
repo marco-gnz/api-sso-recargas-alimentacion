@@ -134,7 +134,7 @@
     </div>
     <div class="titulo">
         <h4 align="center">Cartola Resumen de Beneficio de Alimentación</h4>
-        <h1 align="center">Emitida el {{$titulo_cartola->fecha_emision}}</h1>
+        <h1 align="center">Emitida el {{$esquema->tituloCartola()->fecha_emision}}</h1>
     </div>
     <div class="datos">
         <section class="section-borde">
@@ -173,19 +173,19 @@
                     <tbody>
                         <tr>
                             <th>Establecimiento:</th>
-                            <td>{{ $titulo_cartola->establecimiento }}</td>
+                            <td>{{ $esquema->tituloCartola()->establecimiento }}</td>
                         </tr>
                         <tr>
                             <th>Periodo de cálculo de ausentismos:</th>
-                            <td>{{ $titulo_cartola->mes_calculo }} {{ $titulo_cartola->anio_calculo }}</td>
+                            <td>{{ $esquema->tituloCartola()->mes_calculo }} {{ $esquema->tituloCartola()->anio_calculo }}</td>
                         </tr>
                         <tr>
                             <th>Periodo de beneficio:</th>
-                            <td>{{ $titulo_cartola->mes_beneficio }} {{ $titulo_cartola->anio_beneficio }}</td>
+                            <td>{{ $esquema->tituloCartola()->mes_beneficio }} {{ $esquema->tituloCartola()->anio_beneficio }}</td>
                         </tr>
                         <tr>
                             <th>Monto a cancelar por día:</th>
-                            <td>{{ $titulo_cartola->monto_dia }}</td>
+                            <td>{{ $esquema->tituloCartola()->monto_dia }}</td>
                         </tr>
                     </tbody>
                 </table>

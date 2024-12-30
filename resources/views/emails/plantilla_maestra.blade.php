@@ -7,43 +7,72 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
             margin: 0;
             padding: 0;
+            font-family: Arial, sans-serif;
         }
 
         .container {
-            width: 50%;
+            width: 90%;
+            max-width: 600px;
             background-color: #ffffff;
             padding: 20px;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            margin: 5px auto;
+            border-radius: 5px;
         }
 
         .header {
             display: flex;
+            flex-wrap: wrap;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
+            margin-bottom: -80px;
+            text-align: center;
         }
 
         .logo {
-            width: 100px;
-            height: 100px;
-            margin-right: 20px;
+            max-width: 80px;
+            height: auto;
+            margin-bottom: 10px;
         }
 
         .system-title {
-            text-align: center;
             flex-grow: 1;
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
         }
 
         .content {
-            /* Agrega tus estilos personalizados para el contenido aquí */
+            margin-top: 20px;
+            font-size: 16px;
+            line-height: 1.5;
         }
 
         .footer {
             padding: 10px 0;
             text-align: center;
+            font-size: 14px;
+            color: #666;
+        }
+
+        @media (max-width: 480px) {
+            .logo {
+                max-width: 60px;
+            }
+
+            .system-title {
+                font-size: 16px;
+            }
+
+            .content {
+                font-size: 14px;
+            }
+
+            .container {
+                padding: 15px;
+            }
         }
     </style>
 </head>
@@ -51,11 +80,11 @@
     <div class="container">
         <div class="header">
             <div class="logo">
-                <img src="https://ssosorno.cl/wrdprss_minsal/wp-content/uploads/2020/07/logo2020-174x155.jpg"  alt="Logo">
+                <img src="{{ asset('img/gob.svg') }}" class="logo" alt="Logo" style="width: 50px; height: auto;">
             </div>
-            <div class="system-title">
-                <h1>SBA</h1>
-            </div>
+            {{-- <div class="system-title">
+                <h1>Beneficio de Alimentación</h1>
+            </div> --}}
         </div>
 
         <div class="content">
@@ -63,7 +92,7 @@
         </div>
 
         <div class="footer">
-            <p><b>SSO</b> - Depto. Gestión de las personas</p>
+            <p><b>SSO</b> - Depto. Gestión de las Personas</p>
         </div>
     </div>
 </body>
