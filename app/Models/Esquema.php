@@ -184,7 +184,7 @@ class Esquema extends Model
         $total_monto_ajustes    = 0;
         if ($esquema->es_turnante_value) {
             $total_contrato      = $esquema->calculo_turno;
-            $total_ausentismos   = $esquema->calculo_grupo_uno + $esquema->calculo_grupo_dos + $esquema->total_dias_grupo_tres;
+            $total_ausentismos   = $esquema->calculo_grupo_uno + $esquema->calculo_grupo_dos + $esquema->calculo_grupo_tres;
             $total_viaticos      = $esquema->total_dias_viaticos;
             $total_dias_ajustes  = $esquema->calculo_dias_ajustes;
             $total_monto_ajustes = $esquema->total_monto_ajuste;
@@ -193,7 +193,7 @@ class Esquema extends Model
             /* $total_dias_cancelar = $total_dias_cancelar > 0 ? $total_dias_cancelar : 0; */
         } else {
             $total_contrato      = $esquema->calculo_contrato;
-            $total_ausentismos   = $esquema->calculo_grupo_uno + $esquema->calculo_grupo_dos + $esquema->total_dias_grupo_tres;
+            $total_ausentismos   = $esquema->calculo_grupo_uno + $esquema->calculo_grupo_dos + $esquema->calculo_grupo_tres;
             $total_viaticos      = $esquema->calculo_viaticos;
             $total_dias_ajustes  = $esquema->calculo_dias_ajustes;
             $total_monto_ajustes = $esquema->total_monto_ajuste;
