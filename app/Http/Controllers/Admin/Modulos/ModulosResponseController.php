@@ -324,15 +324,19 @@ class ModulosResponseController extends Controller
     public function returnFeriados($codigo)
     {
         try {
-            $new_feriados           = [];
-            $feriados_recarga       = [];
-            $feriados               = [];
+            $new_feriados = [];
+            $feriados_recarga = [];
+            $feriados = [];
             $feriados_recarga_query = [];
-            $recarga                = Recarga::where('codigo', $codigo)->firstOrFail();
-            $url                    = "https://apis.digital.gob.cl/fl/feriados/{$recarga->anio_calculo}/{$recarga->mes_calculo}";
+            $feriados_ok = []; // <- lo agregamos aquí
+            $fechas = [];
+
+            $recarga = Recarga::where('codigo', $codigo)->firstOrFail();
+            $url = "https://apis.digital.gob.cl/fl/feriados/{$recarga->anio_calculo}/{$recarga->mes_calculo}";
 
             $feriados_1 = $this->feriadosFechaCalculo($recarga);
             $feriados_2 = $this->feriadosFechaBeneficio($recarga);
+
             if ((is_array($feriados_1)) && (count($feriados_1) > 0)) {
                 foreach ($feriados_1 as $f) {
                     array_push($feriados, $f);
@@ -345,44 +349,42 @@ class ModulosResponseController extends Controller
             }
 
             if (count($feriados) > 0) {
-                $fechas                     = collect($feriados)->pluck('fecha');
-                $feriados_recarga_query     = $recarga->feriados()->whereIn('fecha', $fechas)->get();
+                $fechas = collect($feriados)->pluck('fecha');
+                $feriados_recarga_query = $recarga->feriados()->whereIn('fecha', $fechas)->get();
 
                 if (count($feriados_recarga_query) > 0) {
                     $feriados_recarga_query = $feriados_recarga_query->pluck('fecha')->toArray();
-                    $feriados_recarga       = $feriados_recarga_query;
+                    $feriados_recarga = $feriados_recarga_query;
                 } else {
                     $feriados_recarga_query = [];
-                    $feriados_recarga       = [];
+                    $feriados_recarga = [];
                 }
 
-
-                if (count($feriados) > 0) {
-                    foreach ($feriados as $feriado) {
-                        if (isset($feriado['fecha']) && !in_array($feriado['fecha'], $feriados_recarga)) {
-                            array_push($new_feriados, $feriado);
-                        }
+                foreach ($feriados as $feriado) {
+                    if (isset($feriado['fecha']) && !in_array($feriado['fecha'], $feriados_recarga)) {
+                        array_push($new_feriados, $feriado);
                     }
                 }
-
-                $feriados_adicionales = $this->feriadosEspeciales($recarga, $fechas);
-
-                $new_feriados = array_map(function ($feriado) {
-                    return is_object($feriado) ? (array) $feriado : $feriado;
-                }, $new_feriados);
-
-                $feriados_adicionales = array_map(function ($feriado) {
-                    return is_object($feriado) ? (array) $feriado : $feriado;
-                }, $feriados_adicionales);
-
-                $feriados_ok = array_merge($new_feriados, $feriados_adicionales);
             }
+            $feriados_adicionales = $this->feriadosEspeciales($recarga, $fechas);
+
+            $new_feriados = array_map(function ($feriado) {
+                return is_object($feriado) ? (array) $feriado : $feriado;
+            }, $new_feriados);
+
+            $feriados_adicionales = array_map(function ($feriado) {
+                return is_object($feriado) ? (array) $feriado : $feriado;
+            }, $feriados_adicionales);
+
+            $feriados_ok = array_merge($new_feriados, $feriados_adicionales);
+
             return FeriadosResource::collection($feriados_ok);
         } catch (\Exception $error) {
             Log::info($error->getMessage());
             return $error->getMessage();
         }
     }
+
 
     private function feriadosFechaCalculo($recarga)
     {
