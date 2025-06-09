@@ -334,7 +334,7 @@ class ModulosResponseController extends Controller
             $recarga = Recarga::where('codigo', $codigo)->firstOrFail();
             $url = "https://apis.digital.gob.cl/fl/feriados/{$recarga->anio_calculo}/{$recarga->mes_calculo}";
 
-            $feriados_1 = $this->feriadosFechaCalculo($recarga);
+            /* $feriados_1 = $this->feriadosFechaCalculo($recarga);
             $feriados_2 = $this->feriadosFechaBeneficio($recarga);
 
             if ((is_array($feriados_1)) && (count($feriados_1) > 0)) {
@@ -346,7 +346,7 @@ class ModulosResponseController extends Controller
                 foreach ($feriados_2 as $f) {
                     array_push($feriados, $f);
                 }
-            }
+            } */
 
             if (count($feriados) > 0) {
                 $fechas = collect($feriados)->pluck('fecha');
