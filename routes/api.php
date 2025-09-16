@@ -139,6 +139,7 @@ Route::group(
         Route::get('/admin/recargas/recarga/{codigo}/resumen', [App\Http\Controllers\Admin\RecargaResumenController::class, 'returnFindRecarga']);
         Route::get('/admin/recargas/recarga/{codigo}/viaticos', [App\Http\Controllers\Admin\RecargaViaticosController::class, 'returnViaticosRecarga']);
         Route::get('/admin/recargas/recarga/{codigo}/reajustes', [App\Http\Controllers\Admin\Recarga\ModulosController::class, 'getAjustes']);
+        Route::post('/admin/recargas/recarga/export/{codigo}/reajustes', [App\Http\Controllers\Admin\Recarga\ModulosController::class, 'reajustesExport']);
         Route::get('/admin/recargas/recarga/{codigo}/not-funcionarios', [App\Http\Controllers\Admin\RecargaResumenController::class, 'searchNotFuncionarios']);
 
         Route::get('/admin/recargas/recarga/{codigo}/funcionarios', [App\Http\Controllers\Admin\RecargaResumenController::class, 'returnFuncionariosToRecarga']);

@@ -258,4 +258,11 @@ class User extends Authenticatable
             });
         }
     }
+
+    public function abreNombres3()
+    {
+        $nombres    = mb_substr($this->nombres, 0, 1);
+        $apellidos  = $this->apellidos;
+        return "$apellidos $nombres.";
+    }
 }
