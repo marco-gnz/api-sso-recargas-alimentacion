@@ -434,7 +434,7 @@ class PdfController extends Controller
                 ->with('recarga.estados')
                 ->first();
 
-            if (($esquema) && ($esquema->active) && ($esquema->recarga->last_status === 2)) {
+            if (($esquema) && ($esquema->recarga->last_status === 2)) {
                 setlocale(LC_ALL, "es_ES");
                 Carbon::setLocale('es');
                 $tz              = 'America/Santiago';
