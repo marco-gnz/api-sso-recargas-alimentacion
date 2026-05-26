@@ -16,9 +16,9 @@
         @elseif($esquema->recarga->establecimiento->cod_sirh === 1040)
             <b>anabelen.alvarez@redsalud.gob.cl</b>
         @elseif($esquema->recarga->establecimiento->cod_sirh === 1041)
-            <b>axel.vogt@redsalud.gob.cl</b>
+            <b>--</b>
         @elseif($esquema->recarga->establecimiento->cod_sirh === 1042)
-            <b>axel.vogt@redsalud.gob.cl</b>
+            <b>carolina.delgados@redsalud.gob.cl</b>
         @elseif($esquema->recarga->establecimiento->cod_sirh === 1043)
             <b>jorge.oyarzuns@redsalud.gob.cl</b>
         @elseif($esquema->recarga->establecimiento->cod_sirh === 1044)
