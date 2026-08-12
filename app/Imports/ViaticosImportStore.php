@@ -12,15 +12,18 @@ use App\Http\Controllers\Admin\Calculos\ActualizarEsquemaController;
 use App\Http\Controllers\Admin\Esquema\EsquemaController;
 use App\Http\Controllers\Admin\Calculos\AnalisisRegistroController;
 use App\Models\Esquema;
+use App\Models\Reajuste;
+use App\Models\ReajusteEstado;
 use Illuminate\Support\Facades\Log;
 
 class ViaticosImportStore implements ToModel, WithHeadingRow, WithValidation
 {
-    public function  __construct($recarga, $columnas, $row_columnas)
+    public function  __construct($recarga, $columnas, $row_columnas, $tipo_carga)
     {
         $this->recarga                  = $recarga;
         $this->columnas                 = $columnas;
         $this->row_columnas             = $row_columnas;
+        $this->tipo_carga               = (int)$tipo_carga;
 
         $this->rut                   = $this->columnas[0];
         $this->dv                    = $this->columnas[1];
@@ -126,7 +129,17 @@ class ViaticosImportStore implements ToModel, WithHeadingRow, WithValidation
                 /* $calculo            = $this->totalDiasEnPeriodo($fecha_inicio, $fecha_termino); */
 
                 $analisis_registro_controller       = new AnalisisRegistroController;
-                $analisis_viaticos                  = $analisis_registro_controller->analisisViaticos($turnante, $this->recarga, $funcionario, $fecha_inicio, $fecha_termino);
+                $analisis_viaticos                  = $analisis_registro_controller->analisisViaticos($turnante, $this->recarga, $funcionario, $fecha_inicio, $fecha_termino, $this->tipo_carga);
+                $existeViatico                      = Viatico::where('n_resolucion', (string)$row[$this->numero_resolucion])->where('user_id', $funcionario->id)->first();
+                $existeAjuste                       = Reajuste::where('tipo_ausentismo_id', 2)
+                            ->where('tipo_reajuste', Reajuste::TYPE_DIAS)
+                            ->where('last_status', ReajusteEstado::STATUS_APROBADO)
+                            ->where('user_id', $funcionario->id)
+                            ->where(function ($q) use ($fecha_termino, $fecha_inicio) {
+                                $q->where('fecha_inicio', $fecha_inicio->format('Y-m-d'))
+                                    ->where('fecha_termino', $fecha_termino->format('Y-m-d'));
+                            })
+                            ->first();
 
                 $data = [
                     'fecha_inicio'                          => $analisis_viaticos->fecha_inicio->format('Y-m-d'),
@@ -151,15 +164,18 @@ class ViaticosImportStore implements ToModel, WithHeadingRow, WithValidation
                     'recarga_id'                            => $this->recarga->id,
                     'esquema_id'                            => $esquema ? $esquema->id : NULL,
                     'user_id'                               => $funcionario->id,
+                    'import_type'                           => $this->tipo_carga
                 ];
 
-                $viatico = Viatico::create($data);
+                if (!$existeViatico || !$existeAjuste) {
+                    $viatico = Viatico::create($data);
 
-                if ($viatico) {
-                    $cartola_controller = new ActualizarEsquemaController;
-                    $cartola_controller->updateEsquemaViaticos($funcionario, $this->recarga);
-                    $this->importados++;
-                    return $viatico;
+                    if ($viatico) {
+                        $cartola_controller = new ActualizarEsquemaController;
+                        $cartola_controller->updateEsquemaViaticos($funcionario, $this->recarga);
+                        $this->importados++;
+                        return $viatico;
+                    }
                 }
             }
         } catch (\Exception $error) {

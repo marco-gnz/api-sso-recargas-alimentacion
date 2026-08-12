@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\Esquema;
+use App\Models\Viatico;
 use Carbon\Carbon;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -75,7 +76,8 @@ class RecargaViaticosResource extends JsonResource
             'existe_funcionario'        => $this->esquema ? true : false,
             'es_turnante'               => $this->esquema ? Esquema::TURNANTE_NOM[$this->esquema->es_turnante] : null,
             'es_turnante_type'          => $this->esquema ? ($this->esquema->es_turnante === 1 ? 'warning' : ($this->esquema->es_turnante === 2 ? 'primary' : 'danger')) : null,
-            'descuento_turno_libre'     => $this->descuento_turno_libre ? true : false
+            'descuento_turno_libre'     => $this->descuento_turno_libre ? true : false,
+            'import_type'               => Viatico::IMPORT_TYPE_DESC[$this->import_type]['nombre']
         ];
     }
 }

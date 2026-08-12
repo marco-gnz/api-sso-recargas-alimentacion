@@ -15,15 +15,18 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use App\Http\Controllers\Admin\Calculos\AnalisisRegistroController;
 use App\Http\Controllers\Admin\Esquema\EsquemaController;
 use App\Models\Esquema;
+use App\Models\Reajuste;
+use App\Models\ReajusteEstado;
 use Illuminate\Support\Facades\Log;
 
 class ViaticosImport implements WithValidation, ToCollection, WithHeadingRow
 {
-    public function  __construct($recarga, $columnas, $row_columnas)
+    public function  __construct($recarga, $columnas, $row_columnas, $tipo_carga)
     {
         $this->recarga                  = $recarga;
         $this->columnas                 = $columnas;
         $this->row_columnas             = $row_columnas;
+        $this->tipo_carga               = $tipo_carga;
 
         $this->rut                   = $this->columnas[0];
         $this->dv                    = $this->columnas[1];
@@ -75,7 +78,19 @@ class ViaticosImport implements WithValidation, ToCollection, WithHeadingRow
                         $fecha_termino                      = Carbon::parse($this->transformDate($row[$this->fecha_termino]));
                         $fecha_resolucion                   = Carbon::parse($this->transformDate($row[$this->fecha_resolucion]));
                         $analisis_registro_controller       = new AnalisisRegistroController;
-                        $analisis_viaticos                  = $analisis_registro_controller->analisisViaticos($turnante, $this->recarga, $funcionario, $fecha_inicio, $fecha_termino);
+                        $analisis_viaticos                  = $analisis_registro_controller->analisisViaticos($turnante, $this->recarga, $funcionario, $fecha_inicio, $fecha_termino, $this->tipo_carga);
+                        $existeViatico                      = Viatico::where('n_resolucion', (string)$row[$this->numero_resolucion])
+                            ->where('user_id', $funcionario->id)
+                            ->first();
+                        $existeAjuste                       = Reajuste::where('tipo_ausentismo_id', 2)
+                            ->where('tipo_reajuste', Reajuste::TYPE_DIAS)
+                            ->where('last_status', ReajusteEstado::STATUS_APROBADO)
+                            ->where('user_id', $funcionario->id)
+                            ->where(function ($q) use ($fecha_termino, $fecha_inicio) {
+                                $q->where('fecha_inicio', $fecha_inicio->format('Y-m-d'))
+                                    ->where('fecha_termino', $fecha_termino->format('Y-m-d'));
+                            })
+                            ->first();
 
                         $data = [
                             'nombres'                                           => $funcionario->nombre_completo,
@@ -88,7 +103,8 @@ class ViaticosImport implements WithValidation, ToCollection, WithHeadingRow
                             'fecha_periodo'                                     => "{$analisis_viaticos->fecha_inicio_periodo->format('d-m-Y')} / {$analisis_viaticos->fecha_termino_periodo->format('d-m-Y')}",
                             'dias_naturales'                                    => $analisis_viaticos->total_dias_ausentismo_periodo_calculo,
                             'total_dias_habiles_ausentismo_periodo'             => $analisis_viaticos->total_dias_habiles_ausentismo_periodo_calculo,
-                            'descuento_en_turnos'                               => $analisis_viaticos->descuento_en_turnos ? 'Si' : 'No'
+                            'existe_viatico'                                    => $existeViatico ? $existeViatico->recarga->codigo : null,
+                            'ajuste_localizado'                                 => $existeAjuste ? $existeAjuste->recarga->codigo : null
                         ];
                         array_push($viaticos, $data);
                     }
@@ -200,39 +216,50 @@ class ViaticosImport implements WithValidation, ToCollection, WithHeadingRow
         return $existe;
     }
 
-    public function existFuncionarioInRecarga($rut)
+    public function periodoInRecarga($fechaInicio, $fechaTermino, int $tipoCarga): array
     {
-        $existe         = false;
-        $funcionario    = User::where('rut_completo', $rut)->first();
+        $tipoCarga = (int)$tipoCarga;
+        $tz = 'America/Santiago';
 
-        if ($funcionario) {
-            $query_results = $this->recarga->whereHas('users', function ($query) use ($funcionario) {
-                $query->where('recarga_user.user_id', $funcionario->id);
-            })->count();
+        $periodoInicio  = Carbon::parse($fechaInicio, $tz)->format('Y-m');
+        $periodoTermino = Carbon::parse($fechaTermino, $tz)->format('Y-m');
 
-            if ($query_results > 0) {
-                $existe = true;
-            }
+        $periodoRecarga = Carbon::createFromDate(
+            $this->recarga->anio_calculo,
+            $this->recarga->mes_calculo,
+            1,
+            $tz
+        )->format('Y-m');
+
+        $inicioDentroPeriodo  = $periodoInicio === $periodoRecarga;
+        $terminoDentroPeriodo = $periodoTermino === $periodoRecarga;
+
+        if ($tipoCarga === 0) {
+            $esValido = $inicioDentroPeriodo && $terminoDentroPeriodo;
+
+            return [
+                'validate' => $esValido,
+                'messagge' => $esValido
+                    ? null
+                    : 'Las fechas deben encontrarse dentro del periodo de recarga.',
+            ];
         }
-        return $existe;
-    }
 
-    public function periodoInRecarga($fecha_inicio, $fecha_termino)
-    {
-        $in_recarga = true;
+        if ($tipoCarga === 1) {
+            $esValido = !$inicioDentroPeriodo && !$terminoDentroPeriodo;
 
-        $new_fecha_inicio       = Carbon::parse($fecha_inicio)->format('Y-m');
-        $new_fecha_termino      = Carbon::parse($fecha_termino)->format('Y-m');
-
-        $tz                     = 'America/Santiago';
-        $fecha_recarga_inicio   = Carbon::createFromDate($this->recarga->anio_calculo, $this->recarga->mes_calculo, '01', $tz)->format('Y-m');
-        $fecha_recarga_termino  = Carbon::createFromDate($this->recarga->anio_calculo, $this->recarga->mes_calculo, '01', $tz);
-        $fecha_recarga_termino  = $fecha_recarga_termino->endOfMonth()->format('Y-m');
-
-        if ($new_fecha_inicio != $fecha_recarga_inicio || $new_fecha_termino != $fecha_recarga_termino) {
-            $in_recarga = false;
+            return [
+                'validate' => $esValido,
+                'messagge' => $esValido
+                    ? null
+                    : 'Las fechas deben encontrarse fuera del periodo de recarga.',
+            ];
         }
-        return $in_recarga;
+
+        return [
+            'validate' => false,
+            'messagge' => 'El tipo de carga no es válido.',
+        ];
     }
 
     public function returnKeyFile($data)
@@ -256,17 +283,29 @@ class ViaticosImport implements WithValidation, ToCollection, WithHeadingRow
                 $fecha_termino_real             = Carbon::parse($calculo[1])->format('Y-m-d');
 
                 $validate                       = $this->validateRut($rut);
-                $exist_funcionario_in_recarga   = $this->existFuncionarioInRecarga($rut);
-                $periodo_in_recarga             = $this->periodoInRecarga($fecha_inicio_real, $fecha_termino_real);
-                $viatico_duplicado              = $this->viaticoDuplicado($rut, $fecha_inicio_real, $fecha_termino_real);
+                $tipo_carga                     = (int)$this->tipo_carga;
 
+                if ($tipo_carga === 0) {
+                    $fechaInicioValidate = $fecha_inicio_real;
+                    $fechaTerminoValidate = $fecha_termino_real;
+                } else {
+                    $fechaInicioValidate = $fecha_inicio->format('Y-m-d');
+                    $fechaTerminoValidate = $fecha_termino->format('Y-m-d');
+                }
+                $validatePeriodo = $this->periodoInRecarga(
+                    $fechaInicioValidate,
+                    $fechaTerminoValidate,
+                    $tipo_carga
+                );
+                $viatico_duplicado              = $this->viaticoDuplicado($rut, $fecha_inicio_real, $fecha_termino_real);
 
                 if (!$validate) {
                     $validator->errors()->add($key, 'Rut incorrecto, por favor verificar. Verificado con Módulo 11.');
-                } /* else if (!$exist_funcionario_in_recarga) {
-                    $validator->errors()->add($key, 'Funcionario no existe en recarga como vigente.');
-                }  */else if (!$periodo_in_recarga) {
-                    $validator->errors()->add($key, "Fechas fuera de periodo de recarga.");
+                } else if (!$validatePeriodo['validate']) {
+                    $validator->errors()->add(
+                        $key,
+                        $validatePeriodo['messagge']
+                    );
                 } else if ($viatico_duplicado) {
                     $validator->errors()->add($key, "Ya existe un registro idéntico en el sistema.");
                 } else if (in_array($new_key, $assoc_array)) {

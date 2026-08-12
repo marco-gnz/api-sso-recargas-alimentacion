@@ -28,7 +28,8 @@ class LoadFileRequest extends FormRequest
             'row_columnas'      => ['required'],
             'columnas'          => ['required'],
             'id_carga'          => ['required'],
-            'file'              => ['required', 'file', 'mimes:xlsx,xls', 'max:10000']
+            'file'              => ['required', 'file', 'mimes:xlsx,xls', 'max:10000'],
+            'tipo_carga'        => ['required_if:id_carga,viaticos']
         ];
     }
 }

@@ -31,6 +31,7 @@ class Viatico extends Model
         'fecha_resolucion',
         'tipo_comision',
         'motivo_viatico',
+        'import_type',
         'valor_viatico',
         'user_id',
         'recarga_id',
@@ -39,6 +40,14 @@ class Viatico extends Model
         'date_created_user',
         'user_update_by',
         'date_updated_user'
+    ];
+
+    public const IMPORT_TYPE_0 = 0;
+    public const IMPORT_TYPE_1 = 1;
+
+    public const IMPORT_TYPE_DESC = [
+        self::IMPORT_TYPE_0   => ['nombre' => 'En periodo de descuento'],
+        self::IMPORT_TYPE_1   => ['nombre' => 'Fuera periodo de descuento']
     ];
 
     public function funcionario()
@@ -105,6 +114,13 @@ class Viatico extends Model
             } elseif (in_array(0, $descuento)) {
                 return $query->where('valor_viatico', '<=', 0);
             }
+        }
+    }
+
+    public function scopeTipoCarga($query, $param)
+    {
+        if ($param) {
+            return $query->whereIn('import_type', $param);
         }
     }
 

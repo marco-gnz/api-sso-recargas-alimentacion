@@ -63,6 +63,7 @@ class RecargasFilesController extends Controller
             $file           = request()->file('file');
             $recarga        = Recarga::where('codigo', $request->codigo_recarga)->with('establecimiento')->first();
             $row_columnas   = $request->row_columnas ?? 0;
+            $tipo_carga     = (int)$request->tipo_carga;
             $columnas       = json_decode($request->columnas, true);
             $id_carga       = $request->id_carga;
 
@@ -144,7 +145,7 @@ class RecargasFilesController extends Controller
                         break;
 
                     case 'viaticos':
-                        $import = new ViaticosImport($recarga, $new_columnas, $row_columnas);
+                        $import = new ViaticosImport($recarga, $new_columnas, $row_columnas, $tipo_carga);
                         Excel::import($import, $file);
                         break;
 
@@ -206,6 +207,7 @@ class RecargasFilesController extends Controller
             $row_columnas   = $request->row_columnas ?? 0;
             $columnas       = json_decode($request->columnas, true);
             $id_carga       = $request->id_carga;
+            $tipo_carga     = (int)$request->tipo_carga;
 
             foreach ($columnas as $key => $columna) {
                 $cadena = strtolower($columna['nombre_columna']);
@@ -286,7 +288,7 @@ class RecargasFilesController extends Controller
                         break;
 
                     case 'viaticos':
-                        $import = new ViaticosImportStore($recarga, $new_columnas, $row_columnas);
+                        $import = new ViaticosImportStore($recarga, $new_columnas, $row_columnas, $tipo_carga);
                         $save = Excel::import($import, $file);
                         break;
 
@@ -311,118 +313,6 @@ class RecargasFilesController extends Controller
             return response()->json([$error->getMessage(), $error->failures()]);
         }
     }
-
-
-    /*  public function loadData(LoadFileRequest $request)
-    {
-        try {
-            $new_columnas           = [];
-            $new_columnas_archivo   = [];
-            $file           = request()->file('file');
-            $recarga        = Recarga::where('codigo', $request->codigo_recarga)->with('establecimiento')->first();
-            $row_columnas   = $request->row_columnas != null ? $request->row_columnas : 0;
-            $columnas       = $request->columnas;
-            $columnas       = json_decode($columnas, true);
-
-            $id_carga = $request->id_carga;
-
-            foreach ($columnas as $key => $columna) {
-                $cadena = strtolower($columna['nombre_columna']);
-
-                // Eliminar espacios en blanco al inicio y al final
-                $cadena = trim($cadena);
-
-                // Eliminar espacios en blanco dentro del texto si son mayores a 1
-                $cadena = preg_replace('/\s+/', ' ', $cadena);
-
-                // Reemplazar espacios en blanco por guiones bajos
-                $cadena = str_replace(['.', ' '], [' ', '_'], $cadena);
-
-                if ($id_carga === 'asistencias') {
-                    if ($key > 2) {
-                        $fecha = $this->transformDateExcel($cadena);
-                        array_push($new_columnas, $fecha);
-                    } else {
-                        array_push($new_columnas, $cadena);
-                    }
-                } else {
-                    array_push($new_columnas, $cadena);
-                }
-            }
-
-            $headings_file      = (new HeadingRowImport($row_columnas))->toArray($file);
-            if ($id_carga === 'asistencias') {
-                foreach ($headings_file[0][0] as $co) {
-                    $cadena = strtolower($columna['nombre_columna']);
-
-                    // Eliminar espacios en blanco al inicio y al final
-                    $cadena = trim($cadena);
-
-                    // Eliminar espacios en blanco dentro del texto si son mayores a 1
-                    $cadena = preg_replace('/\s+/', ' ', $cadena);
-
-                    // Reemplazar espacios en blanco por guiones bajos
-                    $cadena = str_replace(['.', ' '], [' ', '_'], $cadena);
-                    array_push($new_columnas_archivo, $co);
-                }
-                $validate_columns   = $this->validateColumns($new_columnas, $new_columnas_archivo);
-            } else {
-                $validate_columns   = $this->validateColumns($new_columnas, $headings_file[0][0]);
-            }
-
-
-            if (!$validate_columns[0]) {
-                if ($id_carga === 'asistencias') {
-                    $name_column_error = null;
-                    if (is_numeric($validate_columns[1])) {
-                        $name_column_error = $this->transformDate($validate_columns[1]);
-                        $name_column_error = Carbon::parse($name_column_error)->format('d-m-Y');
-                    } else {
-                        $name_column_error = $validate_columns[1];
-                    }
-                    $message = "No se localizó el nombre de columna '{$name_column_error}' en la posición {$row_columnas} para el archivo {$file->getClientOriginalName()}.";
-                } else {
-                    $message = "No se localizó el nombre de columna '{$validate_columns[1]}' en la posición {$row_columnas} del archivo {$file->getClientOriginalName()}.";
-                }
-                return $this->errorResponse($message, 404);
-            } else {
-                switch ($id_carga) {
-                    case 'funcionarios':
-                        $import = new UsersImport($recarga, $new_columnas, $row_columnas);
-                        Excel::import($import, $file);
-                        break;
-
-                    case 'asignaciones':
-                        $import = new UserTurnoImport($recarga, $new_columnas, $row_columnas);
-                        Excel::import($import, $file);
-                        break;
-
-                    case 'asistencias':
-                        $import = new AsistenciaImport($recarga, $new_columnas, $row_columnas);
-                        Excel::import($import, $file);
-                        break;
-                }
-
-                if (count($import->data)) {
-                    return response()->json([
-                        'status'    => 'Success',
-                        'title'     => null,
-                        'message'   => null,
-                        'data'      => $import->data
-                    ], 200);
-                }
-                return response()->json([
-                    'status'    => 'Error',
-                    'title'     => 'No existen registros.',
-                    'message'   => null,
-                    'data'      => []
-                ], 404);
-            }
-        } catch (\Exception $error) {
-            Log::info($error->getMessage());
-            return response()->json(array($error->getMessage(), $error->failures()));
-        }
-    } */
 
     public function loadFileFuncionarios(Request $request)
     {

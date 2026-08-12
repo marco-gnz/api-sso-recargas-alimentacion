@@ -162,10 +162,10 @@ class AnalisisRegistroController extends Controller
         }
     }
 
-    public function analisisViaticos($es_turnante, $recarga, $funcionario, $fecha_inicio_real, $fecha_termino_real)
+    public function analisisViaticos($es_turnante, $recarga, $funcionario, $fecha_inicio_real, $fecha_termino_real, $tipo_carga = null)
     {
         try {
-            $analisis_periodo_recarga                       = $this->analisisPeriodoRecarga($recarga, $fecha_inicio_real, $fecha_termino_real);
+            $analisis_periodo_recarga                       = $this->analisisPeriodoRecarga($recarga, $fecha_inicio_real, $fecha_termino_real, $tipo_carga);
             $total_dias_ausentismo_periodo                  = 0;
             $total_dias_habiles_ausentismo_periodo          = 0;
             $total_dias_ausentismo_periodo_turno            = 0;
@@ -474,7 +474,7 @@ class AnalisisRegistroController extends Controller
         return $response;
     }
 
-    private function analisisPeriodoRecarga($recarga, $fecha_inicio, $fecha_termino)
+    private function analisisPeriodoRecarga($recarga, $fecha_inicio, $fecha_termino, $tipo_carga = null)
     {
         try {
             $new_fecha_inicio   = Carbon::parse($fecha_inicio);
@@ -489,39 +489,46 @@ class AnalisisRegistroController extends Controller
             $fecha_recarga_inicio   = $fecha_recarga_inicio->format('Y-m-d');
             $fecha_recarga_termino  = $fecha_recarga_termino->format('Y-m-d');
             $total_dias_periodo     = 0;
+            $inicio_periodo         = null;
+            $termino_periodo        = null;
 
             switch ($recarga) {
                 case (($new_fecha_inicio >= $fecha_recarga_inicio) && ($new_fecha_termino <= $fecha_recarga_termino)):
                     $inicio_periodo             = Carbon::parse($new_fecha_inicio);
                     $termino_periodo            = Carbon::parse($new_fecha_termino);
-                    $total_dias_periodo         = $inicio_periodo->diffInDays($termino_periodo) + 1;
                     break;
 
                 case (($new_fecha_inicio >= $fecha_recarga_inicio) && ($new_fecha_termino > $fecha_recarga_termino)):
                     $inicio_periodo             = Carbon::parse($new_fecha_inicio);
                     $termino_periodo            = Carbon::parse($fecha_recarga_termino);
-                    $total_dias_periodo         = $inicio_periodo->diffInDays($termino_periodo) + 1;
                     break;
 
                 case (($new_fecha_inicio < $fecha_recarga_inicio) && ($new_fecha_termino <= $fecha_recarga_termino)):
                     $inicio_periodo             = Carbon::parse($fecha_recarga_inicio);
                     $termino_periodo            = Carbon::parse($new_fecha_termino);
-                    $total_dias_periodo         = $inicio_periodo->diffInDays($termino_periodo) + 1;
                     break;
 
                 case (($new_fecha_inicio < $fecha_recarga_inicio) && ($new_fecha_termino > $fecha_recarga_termino)):
                     $inicio_periodo             = Carbon::parse($fecha_recarga_inicio);
                     $termino_periodo            = Carbon::parse($fecha_recarga_termino);
-                    $total_dias_periodo         = $inicio_periodo->diffInDays($termino_periodo) + 1;
                     break;
 
                 default:
                     $total_dias_periodo = 'error';
                     break;
             }
-            $ini            = Carbon::parse($fecha_inicio);
-            $ter            = Carbon::parse($fecha_termino);
-            $total_dias     = $ini->diffInDays($ter) + 1;
+
+            if (!is_null($inicio_periodo) && !is_null($termino_periodo)) {
+                if (!is_null($tipo_carga) && (int)$tipo_carga === 1) {
+                    $inicio_periodo  = Carbon::parse($fecha_inicio);
+                    $termino_periodo = Carbon::parse($fecha_termino);
+                }
+                $total_dias_periodo = $inicio_periodo->diffInDays($termino_periodo) + 1;
+            }
+
+            $ini        = Carbon::parse($fecha_inicio);
+            $ter        = Carbon::parse($fecha_termino);
+            $total_dias = $ini->diffInDays($ter) + 1;
 
             $response = (object) [
                 'fecha_inicio'                  => $fecha_inicio,

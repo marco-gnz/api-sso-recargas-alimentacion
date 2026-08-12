@@ -57,6 +57,7 @@ class EsquemaController extends Controller
                         $query->where('last_status', 2)
                             ->where('active', true);
                     })
+                    ->orderBy('date_created_user', 'DESC')
                     ->get();
 
                 return response()->json(

@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Viatico;
 use Carbon\Carbon;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -33,7 +34,8 @@ class FuncionarioViaticosResource extends JsonResource
             'tipo_comision'             => $this->tipo_comision ? $this->tipo_comision : NULL,
             'motivo_viatico'            => $this->motivo_viatico ? $this->motivo_viatico : NULL,
             'valor_viatico'             => $this->valor_viatico ? "$".$valor_viatico : NULL,
-            'descuento_turno_libre'     => $this->descuento_turno_libre ? true : false
+            'descuento_turno_libre'     => $this->descuento_turno_libre ? true : false,
+            'import_type'               => Viatico::IMPORT_TYPE_DESC[$this->import_type]['nombre']
         ];
     }
 }

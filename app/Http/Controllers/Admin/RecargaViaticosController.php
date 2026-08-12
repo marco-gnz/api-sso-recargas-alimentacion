@@ -52,6 +52,8 @@ class RecargaViaticosController extends Controller
             $viaticos = $recarga->viaticos()->input($input_query)
             ->descuento($request->descuento)
             ->descuentoTurnoLibre($request->descuento_turno_libre)
+            ->tipoCarga($request->tipo_carga)
+            ->orderBy('fecha_inicio', 'ASC')
             ->orderBy('valor_viatico', 'asc')->paginate(50);
 
             return response()->json(

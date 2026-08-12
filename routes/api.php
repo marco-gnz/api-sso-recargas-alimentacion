@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\Calculos\ActualizarEsquemaController;
 use App\Http\Controllers\ApiPublic\FeriadosController;
+use App\Http\Controllers\ApiPublic\GecomController;
 use App\Http\Controllers\Recarga\StatusRecargaController;
 use App\Http\Resources\ApiUserResource;
 use App\Models\Feriado;
@@ -226,3 +227,4 @@ Route::get('/debug-sentry', function () {
 Route::get('/admin/eliminar-cargas/{codigo}', [StatusRecargaController::class, 'eliminarCarga']);
 
 Route::get('/feriados/{year?}/{month?}', [FeriadosController::class, 'getFeriados']);
+Route::get('/viaticos', [GecomController::class, 'returnViatico']);
