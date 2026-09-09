@@ -83,6 +83,7 @@ class ViaticosImport implements WithValidation, ToCollection, WithHeadingRow
                             ->where('user_id', $funcionario->id)
                             ->first();
                         $existeAjuste                       = Reajuste::where('tipo_ausentismo_id', 2)
+                            ->where('incremento', 1)
                             ->where('tipo_reajuste', Reajuste::TYPE_DIAS)
                             ->where('last_status', ReajusteEstado::STATUS_APROBADO)
                             ->where('user_id', $funcionario->id)
