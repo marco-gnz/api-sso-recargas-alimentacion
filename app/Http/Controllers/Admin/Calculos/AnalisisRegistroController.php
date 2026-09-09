@@ -205,8 +205,14 @@ class AnalisisRegistroController extends Controller
             ];
 
             return $response;
-        } catch (\Exception $error) {
-            Log::info($error->getMessage());
+        } catch (\Throwable $error) {
+            Log::error('Error al analizar viático.', [
+                'message' => $error->getMessage(),
+                'file'    => $error->getFile(),
+                'line'    => $error->getLine(),
+            ]);
+
+            throw $error;
         }
     }
 
@@ -242,7 +248,12 @@ class AnalisisRegistroController extends Controller
 
         if ($diff_dias_periodo > 1) {
             $asistencia_total       = $funcionario->asistencias()->where('recarga_id', $recarga->id)->count();
-            for ($i = $fecha_inicio_periodo; $i <= $fecha_termino_periodo; $i++) {
+            $fecha_actual = Carbon::parse($fecha_inicio_periodo);
+            $fecha_fin = Carbon::parse($fecha_termino_periodo);
+
+            for (; $fecha_actual->lte($fecha_fin); $fecha_actual->addDay()) {
+                $i = $fecha_actual->format('Y-m-d');
+
                 if ($i === $fecha_inicio_periodo) {
                     $ini_new                = $hora_inicio;
                     $ter_new                = '23:59:59';
@@ -540,8 +551,8 @@ class AnalisisRegistroController extends Controller
             ];
 
             return $response;
-        } catch (\Exception $error) {
-            return $error->getMessage();
+        } catch (\Throwable $error) {
+            throw $error;
         }
     }
 
@@ -607,7 +618,11 @@ class AnalisisRegistroController extends Controller
             $termino                = Carbon::parse($terminoPeriodo)->format('Y-m-d');
             $feriados_in_recarga    = $recarga->feriados()->where('active', true)->whereBetween('fecha', [$inicio, $termino])->pluck('fecha')->toArray();
 
-            for ($i = $inicio; $i <= $termino; $i++) {
+            $fecha_actual = Carbon::parse($inicio);
+            $fecha_fin = Carbon::parse($termino);
+
+            for (; $fecha_actual->lte($fecha_fin); $fecha_actual->addDay()) {
+                $i = $fecha_actual->format('Y-m-d');
                 $i_format       = Carbon::parse($i)->isWeekend();
                 if ($i_format) {
                     array_push($fechas, $i);
@@ -628,7 +643,11 @@ class AnalisisRegistroController extends Controller
         $fds        = 0;
         $inicio     = Carbon::parse($inicio_periodo)->format('Y-m-d');
         $termino    = Carbon::parse($termino_periodo)->format('Y-m-d');
-        for ($i = $inicio; $i <= $termino; $i++) {
+        $fecha_actual = Carbon::parse($inicio);
+        $fecha_fin = Carbon::parse($termino);
+
+        for (; $fecha_actual->lte($fecha_fin); $fecha_actual->addDay()) {
+            $i = $fecha_actual->format('Y-m-d');
             $i_format       = Carbon::parse($i)->isWeekend();
             if ($i_format) {
                 $fds++;

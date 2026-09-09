@@ -26,6 +26,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 use Maatwebsite\Excel\HeadingRowImport;
+use Maatwebsite\Excel\Validators\ValidationException;
 use Illuminate\Support\Facades\Log;
 
 class RecargasFilesController extends Controller
@@ -52,6 +53,33 @@ class RecargasFilesController extends Controller
             'message'   => $message,
             'data'      => null
         ], $code);
+    }
+
+    protected function importErrorResponse(\Throwable $error)
+    {
+        if ($error instanceof ValidationException) {
+            Log::warning('Errores de validación al importar archivo.', [
+                'failures' => $error->failures(),
+            ]);
+
+            return response()->json([
+                'status'   => 'Error',
+                'message'  => 'El archivo contiene registros inválidos.',
+                'failures' => $error->failures(),
+            ], 422);
+        }
+
+        Log::error('Error al procesar archivo de recargas.', [
+            'message' => $error->getMessage(),
+            'file'    => $error->getFile(),
+            'line'    => $error->getLine(),
+        ]);
+
+        return response()->json([
+            'status'  => 'Error',
+            'message' => $error->getMessage(),
+            'data'    => null,
+        ], 500);
     }
 
 
@@ -155,7 +183,7 @@ class RecargasFilesController extends Controller
                         break;
                 }
 
-                if (count($import->data)) {
+                if (!empty($import->data)) {
                     if ($id_carga === 'ausentismos_grupo_uno' || $id_carga === 'ausentismos_grupo_dos' || $id_carga === 'ausentismos_grupo_tres') {
                         return response()->json(
                             array(
@@ -192,9 +220,8 @@ class RecargasFilesController extends Controller
                     'data'      => []
                 ], 404);
             }
-        } catch (\Exception $error) {
-            Log::info($error->getMessage());
-            return response()->json([$error->getMessage(), $error->failures()]);
+        } catch (\Throwable $error) {
+            return $this->importErrorResponse($error);
         }
     }
 
@@ -308,9 +335,8 @@ class RecargasFilesController extends Controller
 
                 return $this->successResponse($save, 'Operación realizada con éxito', $message, 200);
             }
-        } catch (\Exception $error) {
-            Log::info($error->getMessage());
-            return response()->json([$error->getMessage(), $error->failures()]);
+        } catch (\Throwable $error) {
+            return $this->importErrorResponse($error);
         }
     }
 
@@ -339,15 +365,14 @@ class RecargasFilesController extends Controller
                 $import = new UsersImport($recarga, $new_columnas, $row_columnas);
                 Excel::import($import, $file);
 
-                if (count($import->data)) {
+                if (!empty($import->data)) {
                     return $this->successResponse($import->data, null, null, 200);
                 } else {
                     return $this->errorResponse('No existen registros.', 404);
                 }
             }
-        } catch (\Exception $error) {
-            Log::info($error->getMessage());
-            return response()->json(array($error->getMessage(), $error->failures()));
+        } catch (\Throwable $error) {
+            return $this->importErrorResponse($error);
         }
     }
 
@@ -385,8 +410,8 @@ class RecargasFilesController extends Controller
                 $message = "{$import->importados} funcionarios importados, {$import->editados} funcionarios actualizados y {$import->cargados_recarga} funcionarios añadidos al periodo.";
                 return $this->successResponse($save, 'Operación realizada con éxito', $message, 200);
             }
-        } catch (\Exception $error) {
-            return response()->json(array($error->getMessage(), $error->failures()));
+        } catch (\Throwable $error) {
+            return $this->importErrorResponse($error);
         }
     }
 
@@ -444,7 +469,7 @@ class RecargasFilesController extends Controller
                 $import = new GrupoUnoImport($recarga, $new_columnas, $row_columnas);
                 Excel::import($import, $file);
 
-                if (count($import->data)) {
+                if (!empty($import->data)) {
                     return response()->json(
                         array(
                             'status'            => 'Success',
@@ -458,8 +483,8 @@ class RecargasFilesController extends Controller
                     return $this->errorResponse('No existen registros.', 404);
                 }
             }
-        } catch (\Exception $error) {
-            return response()->json(array($error->getMessage(), $error->failures()));
+        } catch (\Throwable $error) {
+            return $this->importErrorResponse($error);
         }
     }
 
@@ -512,9 +537,8 @@ class RecargasFilesController extends Controller
                 $message = $import->importados . ' ausentismos importados';
                 return $this->successResponse($save, 'Operación realizada con éxito', $message, 200);
             }
-        } catch (\Exception $error) {
-            Log::info($error->getMessage());
-            return response()->json(array($error->getMessage(), $error->failures()));
+        } catch (\Throwable $error) {
+            return $this->importErrorResponse($error);
         }
     }
 
@@ -559,7 +583,7 @@ class RecargasFilesController extends Controller
 
                 Excel::import($import, $file);
 
-                if (count($import->data)) {
+                if (!empty($import->data)) {
                     return response()->json(
                         array(
                             'status'                     => 'Success',
@@ -573,8 +597,8 @@ class RecargasFilesController extends Controller
                     return $this->errorResponse('No existen registros.', 404);
                 }
             }
-        } catch (\Exception $error) {
-            return response()->json(array($error->getMessage(), $error->failures()));
+        } catch (\Throwable $error) {
+            return $this->importErrorResponse($error);
         }
     }
 
@@ -621,8 +645,8 @@ class RecargasFilesController extends Controller
                 $message = $import->importados . ' ausentismos importados';
                 return $this->successResponse($save, 'Operación realizada con éxito', $message, 200);
             }
-        } catch (\Exception $error) {
-            return response()->json(array($error->getMessage(), $error->failures()));
+        } catch (\Throwable $error) {
+            return $this->importErrorResponse($error);
         }
     }
 
@@ -666,7 +690,7 @@ class RecargasFilesController extends Controller
                 $import     = new GrupoTresImport($recarga, $new_columnas, $row_columnas);
                 $save       = Excel::import($import, $file);
 
-                if (count($import->data)) {
+                if (!empty($import->data)) {
                     return response()->json(
                         array(
                             'status'                     => 'Success',
@@ -680,9 +704,8 @@ class RecargasFilesController extends Controller
                     return $this->errorResponse('No existen registros.', 404);
                 }
             }
-        } catch (\Exception $error) {
-            /* return response()->json($error->getMessage()); */
-            return response()->json(array($error->getMessage(), $error->failures()));
+        } catch (\Throwable $error) {
+            return $this->importErrorResponse($error);
         }
     }
 
@@ -729,8 +752,8 @@ class RecargasFilesController extends Controller
                 $message = $import->importados . ' ausentismos importados';
                 return $this->successResponse($save, 'Operación realizada con éxito', $message, 200);
             }
-        } catch (\Exception $error) {
-            return response()->json(array($error->getMessage(), $error->failures()));
+        } catch (\Throwable $error) {
+            return $this->importErrorResponse($error);
         }
     }
 
@@ -760,14 +783,14 @@ class RecargasFilesController extends Controller
 
                 Excel::import($import, $file);
 
-                if (count($import->data)) {
+                if (!empty($import->data)) {
                     return $this->successResponse($import->data, null, null, 200);
                 } else {
                     return $this->errorResponse('No existen registros.', 404);
                 }
             }
-        } catch (\Exception $error) {
-            return response()->json(array($error->getMessage(), $error->failures()));
+        } catch (\Throwable $error) {
+            return $this->importErrorResponse($error);
         }
     }
 
@@ -809,8 +832,8 @@ class RecargasFilesController extends Controller
                 $message = $import->importados . ' turnos importados';
                 return $this->successResponse($save, 'Operación realizada con éxito', $message, 200);
             }
-        } catch (\Exception $error) {
-            return response()->json(array($error->getMessage(), $error->failures()));
+        } catch (\Throwable $error) {
+            return $this->importErrorResponse($error);
         }
     }
 
@@ -890,15 +913,14 @@ class RecargasFilesController extends Controller
 
 
 
-                if (count($import->data)) {
+                if (!empty($import->data)) {
                     return $this->successResponse($import->data, null, null, 200);
                 } else {
                     return $this->errorResponse('No existen registros.', 404);
                 }
             }
-        } catch (\Exception $error) {
-
-            return response()->json(array($error->getMessage(), $error->failures()));
+        } catch (\Throwable $error) {
+            return $this->importErrorResponse($error);
         }
     }
 
@@ -960,8 +982,8 @@ class RecargasFilesController extends Controller
                 $message    = "{$import->importados} registros importados y {$import->actualizados} registros fueron actualizados.";
                 return $this->successResponse($save, 'Operación realizada con éxito', $message, 200);
             }
-        } catch (\Exception $error) {
-            return response()->json(array($error->getMessage(), $error->failures()));
+        } catch (\Throwable $error) {
+            return $this->importErrorResponse($error);
         }
     }
 
@@ -998,14 +1020,14 @@ class RecargasFilesController extends Controller
                 $import     = new ViaticosImport($recarga, $new_columnas, $row_columnas);
                 Excel::import($import, $file);
 
-                if (count($import->data)) {
+                if (!empty($import->data)) {
                     return $this->successResponse($import->data, null, null, 200);
                 } else {
                     return $this->errorResponse('No existen registros.', 404);
                 }
             }
-        } catch (\Exception $error) {
-            return response()->json(array($error->getMessage(), $error->failures()));
+        } catch (\Throwable $error) {
+            return $this->importErrorResponse($error);
         }
     }
 
@@ -1045,9 +1067,8 @@ class RecargasFilesController extends Controller
                 $message    = "{$import->importados} registros importados.";
                 return $this->successResponse($save, 'Operación realizada con éxito', $message, 200);
             }
-        } catch (\Exception $error) {
-            return $error->getMessage();
-            return response()->json(array($error->getMessage(), $error->failures()));
+        } catch (\Throwable $error) {
+            return $this->importErrorResponse($error);
         }
     }
 }

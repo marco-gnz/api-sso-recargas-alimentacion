@@ -44,20 +44,40 @@ class ViaticosImport implements WithValidation, ToCollection, WithHeadingRow
         $this->mes                   = $recarga->mes;
     }
 
-    public $data;
+    public $data = [];
 
     public function headingRow(): int
     {
         return $this->row_columnas;
     }
 
-    public function transformDate($value, $format = 'Y-m-d')
+    public function transformDate($value, $format = 'Y-m-d'): Carbon
     {
-        try {
-            return Carbon::instance(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($value));
-        } catch (\ErrorException $e) {
-            return Carbon::createFromFormat($format, $value);
+        if ($value instanceof \DateTimeInterface) {
+            return Carbon::instance($value);
         }
+
+        if (is_numeric($value)) {
+            return Carbon::instance(
+                \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($value)
+            );
+        }
+
+        $value = trim((string) $value);
+        $date = \DateTime::createFromFormat("!{$format}", $value);
+        $errors = \DateTime::getLastErrors();
+
+        if (
+            $date === false ||
+            (is_array($errors) && ($errors['warning_count'] > 0 || $errors['error_count'] > 0)) ||
+            $date->format($format) !== $value
+        ) {
+            throw new \InvalidArgumentException(
+                "La fecha '{$value}' no es válida. Debe utilizar el formato YYYY-MM-DD."
+            );
+        }
+
+        return Carbon::instance($date);
     }
 
     public function collection(Collection $rows)
@@ -74,9 +94,9 @@ class ViaticosImport implements WithValidation, ToCollection, WithHeadingRow
                         $esquema                            = $esquema_controller->returnEsquema($funcionario->id, $this->recarga->id);
                         $turnante                           = $esquema ? ($esquema->es_turnante != 2 ? true : false) : null;
 
-                        $fecha_inicio                       = Carbon::parse($this->transformDate($row[$this->fecha_inicio]));
-                        $fecha_termino                      = Carbon::parse($this->transformDate($row[$this->fecha_termino]));
-                        $fecha_resolucion                   = Carbon::parse($this->transformDate($row[$this->fecha_resolucion]));
+                        $fecha_inicio                       = $this->transformDate($row[$this->fecha_inicio]);
+                        $fecha_termino                      = $this->transformDate($row[$this->fecha_termino]);
+                        $fecha_resolucion                   = $this->transformDate($row[$this->fecha_resolucion]);
                         $analisis_registro_controller       = new AnalisisRegistroController;
                         $analisis_viaticos                  = $analisis_registro_controller->analisisViaticos($turnante, $this->recarga, $funcionario, $fecha_inicio, $fecha_termino, $this->tipo_carga);
                         $existeViatico                      = Viatico::where('n_resolucion', (string)$row[$this->numero_resolucion])
@@ -113,7 +133,7 @@ class ViaticosImport implements WithValidation, ToCollection, WithHeadingRow
             }
             $this->data = $viaticos;
         } catch (\Exception $error) {
-            return $error->getMessage();
+            throw $error;
         }
     }
 
@@ -277,8 +297,27 @@ class ViaticosImport implements WithValidation, ToCollection, WithHeadingRow
             foreach ($validator->getData() as $key => $data) {
                 $new_key                        = $this->returnKeyFile($data);
                 $rut                            = "{$data[$this->rut]}-{$data[$this->dv]}";
-                $fecha_inicio                   = Carbon::parse($this->transformDate($data[$this->fecha_inicio]));
-                $fecha_termino                  = Carbon::parse($this->transformDate($data[$this->fecha_termino]));
+
+                try {
+                    $fecha_inicio = $this->transformDate($data[$this->fecha_inicio]);
+                    $fecha_termino = $this->transformDate($data[$this->fecha_termino]);
+                    $this->transformDate($data[$this->fecha_resolucion]);
+                } catch (\Throwable $error) {
+                    $validator->errors()->add(
+                        $key,
+                        'Fila ' . ($key + $this->row_columnas + 1) . ': ' . $error->getMessage()
+                    );
+                    continue;
+                }
+
+                if ($fecha_inicio->gt($fecha_termino)) {
+                    $validator->errors()->add(
+                        $key,
+                        'La fecha de inicio no puede ser posterior a la fecha de término.'
+                    );
+                    continue;
+                }
+
                 $calculo                        = $this->totalDiasEnPeriodo($fecha_inicio, $fecha_termino);
                 $fecha_inicio_real              = Carbon::parse($calculo[0])->format('Y-m-d');
                 $fecha_termino_real             = Carbon::parse($calculo[1])->format('Y-m-d');
