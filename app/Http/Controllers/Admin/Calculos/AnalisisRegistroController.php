@@ -571,11 +571,11 @@ class AnalisisRegistroController extends Controller
             $total_dias_periodo_habiles  = 0;
 
             $total_dias_periodo_habiles = $funcionario->asistencias()
-                ->whereHas('recarga', function ($q) use ($mont_last, $year_last) {
+                /* ->whereHas('recarga', function ($q) use ($mont_last, $year_last) {
                     $q->where('mes_beneficio', $mont_last)
                         ->where('anio_beneficio', $year_last)
                         ->where('active', true);
-                })
+                }) */
                 ->whereIn('tipo_asistencia_turno_id', [1, 2])
                 ->whereBetween('fecha', [$inicio_periodo->format('Y-m-d'), $termino_periodo->format('Y-m-d')])
                 ->where(function ($q) use ($fechas_feriado) {
@@ -584,11 +584,11 @@ class AnalisisRegistroController extends Controller
                 ->count();
 
             $total_dias_periodo = $funcionario->asistencias()
-                ->whereHas('recarga', function ($q) use ($mont_last, $year_last) {
+                /* ->whereHas('recarga', function ($q) use ($mont_last, $year_last) {
                     $q->where('mes_beneficio', $mont_last)
                         ->where('anio_beneficio', $year_last)
                         ->where('active', true);
-                })
+                }) */
                 ->whereIn('tipo_asistencia_turno_id', [1, 2])
                 ->whereBetween('fecha', [$inicio_periodo->format('Y-m-d'), $termino_periodo->format('Y-m-d')])
                 ->count();
